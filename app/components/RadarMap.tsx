@@ -3,7 +3,6 @@
 import React, { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, WMSTileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { isNumberObject } from "util/types";
 
 export default function RadarMap() {
   const position: [number, number] = [33.5186, -86.8104]; // Birmingham, AL
@@ -14,7 +13,7 @@ export default function RadarMap() {
         center={position}
         zoom={7}
         style={{ height: "100%", width: "100%" }}
-        scrollWheelZoom={false}
+        scrollWheelZoom={true}
       >
         {/* 1. The Bottom Bun: Esri Dark Base (includes subtle terrain, water, and dark highways) */}
         <TileLayer
