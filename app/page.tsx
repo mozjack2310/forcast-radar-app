@@ -1,4 +1,5 @@
 import React from "react";
+import UnitToggle from "./components/UnitToggle";
 import ForecastCard from "./components/ForecastCard";
 import MapWrapper from "./components/MapWrapper"; // Import the new wrapper
 import CurrentConditionsCard from "./components/CurrentConditionsCard";
@@ -62,7 +63,21 @@ export default async function Home() {
 
   //MOCK SEVERE WEATHER TOGGLE
   // Change this to a string like "Tornado Warning" to test Severe Weather Mode!
-  const activeAlert: string | null = null; // Set to null for no active alerts, or a string like "Tornado Warning" to simulate an alert
+  // Fetch real-time alerts from the Flask Proxy
+  let activeAlert: string | null = null;
+  try {
+    // Polling your RHEL Flask API (Revalidates every 15 seconds)
+    const alertRes = await fetch("http://192.168.1.101:5000/api/alerts", {
+      next: { revalidate: 15 },
+    });
+
+    if (alertRes.ok) {
+      const alertData = await alertRes.json();
+      activeAlert = alertData.alert;
+    }
+  } catch (error) {
+    console.error("Alert fetch failed. Assuming clear skies.", error);
+  }
 
   return (
     <main className="min-h-screen bg-[#000000] p-8 max-w-7xl mx-auto relative">
@@ -76,9 +91,14 @@ export default async function Home() {
       )}
 
       {/* Header */}
-      <h1 className="text-3xl font-bold mb-8 text-[#d4ba98]">
-        Birmingham Forecast & Radar
-      </h1>
+      <div className="flex justify-between items-end mb-8">
+        <h1 className="text-3xl font-bold text-[#d4ba98]">
+          Birmingham Forecast & Radar
+        </h1>
+
+        {/* Drop the visual toggle right here! */}
+        <UnitToggle />
+      </div>
 
       {/* 2. The Conditional Layout Swap */}
       {activeAlert ? (

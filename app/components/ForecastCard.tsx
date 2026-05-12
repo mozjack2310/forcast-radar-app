@@ -1,4 +1,7 @@
+"use client";
+
 import { NWSForecastPeriod } from "@/lib/types";
+import { useUnits } from "../context/UnitContext";
 import React from "react";
 
 interface ForecastCardProps {
@@ -73,6 +76,14 @@ function getWeatherTheme(forecast: string) {
 }
 
 export default function ForecastCard({ period }: ForecastCardProps) {
+  const { system } = useUnits();
+  const isImp = system === "imperial";
+
+  // NWS Forecast gives Fahrenheit by default.
+  const tempF = period.temperature;
+  const displayTemp = isImp ? tempF : Math.round((tempF - 32) * (5 / 9));
+  const displayUnit = isImp ? "F" : "C";
+
   const theme = getWeatherTheme(period.shortForecast);
 
   return (
@@ -89,13 +100,13 @@ export default function ForecastCard({ period }: ForecastCardProps) {
         <img
           src={period.icon}
           alt={period.shortForecast}
-          className={`w-24 h-24 rounded-xl border-2 ${theme.border} object-contain bg-black/20`}
+          className={`w-16 h-16 xl:w-24 xl:h-24 flext-shrink-0 rounded-xl border-2 ${theme.border} object-contain bg-black/20`}
         />
       </div>
 
       <div className="my-2">
         <span className={`text-4xl font-bold ${theme.temp}`}>
-          {period.temperature}°{period.temperatureUnit}
+          {displayTemp}°{displayUnit}
         </span>
       </div>
 

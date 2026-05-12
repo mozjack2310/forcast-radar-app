@@ -1,26 +1,19 @@
-// app/components/CurrentConditionsCard.tsx
+"use client";
 
 import { NWSObservationResponse, OpenMeteoCurrentResponse } from "@/lib/types";
+import { useUnits } from "../context/UnitContext";
 
 interface Props {
   nws: NWSObservationResponse["properties"];
   meteo: OpenMeteoCurrentResponse["current"];
 }
 
-// 1. Math Helpers for Unit Conversion
-const toFahrenheit = (c: number | null) =>
-  c ? Math.round((c * 9) / 5 + 32) : "--";
-const toMph = (kmh: number | null) =>
-  kmh !== null ? Math.round(kmh / 1.60934) : "--";
-const toInHg = (pa: number | null) => (pa ? (pa * 0.0002953).toFixed(2) : "--");
-const toMiles = (m: number | null) => (m ? (m / 1609.34).toFixed(1) : "--");
-
 export default function CurrentConditionsCard({ nws, meteo }: Props) {
+  // 1. Hook into the global context
+  const { system } = useUnits();
+  const isImp = system === "imperial";
+
   // 2. Unpack and Convert Data
-  const tempF = toFahrenheit(nws.temperature?.value);
-  const windSpeed = toMph(nws.windSpeed?.value);
-  const pressure = toInHg(nws.barometricPressure?.value);
-  const visibility = toMiles(nws.visibility?.value);
   const toCardinal = (deg: number | null) => {
     if (deg === null) return "";
     // Divide the 360 degrees into 16 slices (22.5 degrees each)
@@ -46,6 +39,49 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
     return arr[val % 16];
   };
 
+  // 3. Dynamic Math based on Context State
+
+  // NWS Temp is natively Celsius
+  const tempRaw = nws.temperature?.value;
+  const tempVal = isImp
+    ? tempRaw
+      ? Math.round((tempRaw * 9) / 5 + 32)
+      : "--"
+    : Math.round(tempRaw || 0);
+  const tempUnit = isImp ? "F" : "C";
+
+  // NWS Wind is natively km/h
+  const windRaw = nws.windSpeed?.value;
+  const windVal = isImp
+    ? windRaw !== null
+      ? Math.round(windRaw / 1.60934)
+      : "--"
+    : Math.round(windRaw || 0);
+  const windUnit = isImp ? "mph" : "km/h";
+
+  // NWS Pressure is natively Pascals
+  const pressRaw = nws.barometricPressure?.value;
+  const pressVal = isImp
+    ? pressRaw
+      ? (pressRaw * 0.0002953).toFixed(2)
+      : "--"
+    : pressRaw
+      ? (pressRaw / 100).toFixed(1)
+      : "--"; // Convert Pa to hPa for Metric
+  const pressUnit = isImp ? "inHg" : "hPa";
+
+  // Visibility (NWS provides Meters natively)
+  const visRaw = nws.visibility?.value;
+  // Imperial: Meters to Miles (/ 1609.34) | Metric: Meters to Kilometers (/ 1000)
+  const visVal = isImp
+    ? visRaw
+      ? (visRaw / 1609.34).toFixed(1)
+      : "--"
+    : visRaw
+      ? (visRaw / 1000).toFixed(1)
+      : "--";
+  const visUnit = isImp ? "mi" : "km";
+
   // Fallback for wind direction if it's perfectly calm
   const windDir = toCardinal(nws.windDirection?.value);
 
@@ -70,9 +106,16 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
 
       {/* Primary Metric: Temperature */}
       <div className="mb-6">
-        <div className="flex items-baseline gap-2">
-          <span className="text-6xl font-bold text-white">{tempF}°</span>
-          <span className="text-xl text-gray-400">F</span>
+        <div className="flex justify-between items-baseline mb-2 gap-2">
+          <span className="text-6xl font-bold text-white">{tempVal}°</span>
+          <span className="text-xl text-gray-400">{tempUnit}</span>
+          <div>
+            <img
+              src={nws.icon}
+              className="w-20 h-20 rounded-full bg-white/10 p-2 shadow-lg object-contain"
+              alt="Current Weather"
+            />{" "}
+          </div>
         </div>
         <p className="text-gray-300 text-lg capitalize">
           {nws.textDescription || "Stable"}
@@ -85,20 +128,24 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
         <div className="border-t border-gray-800 pt-3">
           <p className="text-gray-500 text-xs font-semibold uppercase">Wind</p>
           <p className="text-gray-200">
-            {windSpeed} mph {windDir}
+            {windVal} {windUnit} {windDir}
           </p>
         </div>
         <div className="border-t border-gray-800 pt-3">
           <p className="text-gray-500 text-xs font-semibold uppercase">
             Pressure
           </p>
-          <p className="text-gray-200">{pressure} inHg</p>
+          <p className="text-gray-200">
+            {pressVal} {pressUnit}
+          </p>
         </div>
         <div className="border-t border-gray-800 pt-3">
           <p className="text-gray-500 text-xs font-semibold uppercase">
             Visibility
           </p>
-          <p className="text-gray-200">{visibility} mi</p>
+          <p className="text-gray-200">
+            {visVal} {visUnit}
+          </p>
         </div>
 
         {/* Open-Meteo Environmental Context (Cyan Text) */}
