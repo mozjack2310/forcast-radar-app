@@ -1,7 +1,8 @@
 import React from "react";
 import UnitToggle from "./components/UnitToggle";
 import ForecastCard from "./components/ForecastCard";
-import MapWrapper from "./components/MapWrapper"; // Import the new wrapper
+import MapWrapper from "./components/MapWrapper";
+import AlertBanner from "./components/AlertBanner";
 import CurrentConditionsCard from "./components/CurrentConditionsCard";
 import {
   NWSForecastPeriod,
@@ -61,35 +62,10 @@ async function getWeatherData() {
 export default async function Home() {
   const { forecast, currentNWS, currentMeteo } = await getWeatherData();
 
-  //MOCK SEVERE WEATHER TOGGLE
-  // Change this to a string like "Tornado Warning" to test Severe Weather Mode!
-  // Fetch real-time alerts from the Flask Proxy
-  let activeAlert: string | null = null;
-  try {
-    // Polling your RHEL Flask API (Revalidates every 15 seconds)
-    const alertRes = await fetch("http://192.168.1.101:5000/api/alerts", {
-      next: { revalidate: 15 },
-    });
-
-    if (alertRes.ok) {
-      const alertData = await alertRes.json();
-      activeAlert = alertData.alert;
-    }
-  } catch (error) {
-    console.error("Alert fetch failed. Assuming clear skies.", error);
-  }
-
   return (
     <main className="min-h-screen bg-[#000000] p-8 max-w-7xl mx-auto relative">
       {/* 1. The Springboard Toast Notification */}
-      {activeAlert && (
-        <div className="fixed top-0 left-0 w-full bg-red-600/90 backdrop-blur-md text-white p-4 z-50 flex justify-center items-center shadow-2xl border-b border-red-400">
-          <span className="font-bold text-lg animate-pulse uppercase tracking-wider">
-            ⚠️ {activeAlert} in effect for your area
-          </span>
-        </div>
-      )}
-
+      <AlertBanner />
       {/* Header */}
       <div className="flex justify-between items-end mb-8">
         <h1 className="text-3xl font-bold text-[#d4ba98]">
@@ -101,28 +77,19 @@ export default async function Home() {
       </div>
 
       {/* 2. The Conditional Layout Swap */}
-      {activeAlert ? (
-        /* --- SEVERE WEATHER MODE --- */
-        <div className="flex flex-col gap-6 mb-8 mt-4">
-          {/* Radar expands to 100% width, gets taller, and gets a warning border */}
-          <div className="w-full h-[600px] border-2 border-red-600 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(220,38,38,0.3)]">
-            <MapWrapper />
-          </div>
+
+      {/* --- STANDARD MODE --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Hybrid Now Card (Left Third) */}
+        <div className="lg:col-span-1 h-full">
+          <CurrentConditionsCard nws={currentNWS} meteo={currentMeteo} />
         </div>
-      ) : (
-        /* --- STANDARD MODE --- */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Hybrid Now Card (Left Third) */}
-          <div className="lg:col-span-1 h-full">
-            <CurrentConditionsCard nws={currentNWS} meteo={currentMeteo} />
-          </div>
-          {/* The Live Radar (Right Two-Thirds) */}
-          <div className="lg:col-span-2 relative z-0">
-            {/* This calls the wrapper, which safely loads the map */}
-            <MapWrapper />
-          </div>
+        {/* The Live Radar (Right Two-Thirds) */}
+        <div className="lg:col-span-2 relative z-0">
+          {/* This calls the wrapper, which safely loads the map */}
+          <MapWrapper />
         </div>
-      )}
+      </div>
 
       {/* The Forecast Cards Grid */}
 

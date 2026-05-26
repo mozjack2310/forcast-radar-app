@@ -109,10 +109,10 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
         <div className="flex justify-between items-baseline mb-2 gap-2">
           <span className="text-6xl font-bold text-white">{tempVal}°</span>
           <span className="text-xl text-gray-400">{tempUnit}</span>
-          <div>
+          <div className="w-[20%] min-w-[48px] max-w-[96px] shrink-0">
             <img
               src={nws.icon}
-              className="w-20 h-20 rounded-full bg-white/10 p-2 shadow-lg object-contain"
+              className="w-full h-auto rounded-full bg-white/10 p-2 shadow-lg object-contain"
               alt="Current Weather"
             />{" "}
           </div>
