@@ -1,4 +1,4 @@
-export function formatForecastWind(windStr, isMetric) {
+export function formatForecastWind(windStr: string | null, isMetric: boolean) {
   // If there's no string, or the metric toggle is off, pass it through untouched
   if (!windStr || !isMetric) return windStr;
 
