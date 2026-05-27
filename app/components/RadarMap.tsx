@@ -15,12 +15,17 @@ export default function RadarMap() {
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
       >
-        {/* 1. The Bottom Bun: Esri Dark Base (includes subtle terrain, water, and dark highways) */}
+        1. The Bottom Bun: Esri Dark Base (includes subtle terrain, water, and
+        dark highways)
         <TileLayer
           url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
           attribution="Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
         />
-
+        {/* Your existing base map layer
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+        /> */}
         {/* 2. The Meat: Live Radar Overlay (IEM) */}
         <WMSTileLayer
           url="https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi"
@@ -28,8 +33,8 @@ export default function RadarMap() {
           format="image/png"
           transparent={true}
           opacity={0.65}
+          attribution="Weather data © IEM Nexrad"
         />
-
         {/* 3. The Top Bun: Esri Dark Reference (City labels, borders, and highway shields) */}
         <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}" />
       </MapContainer>

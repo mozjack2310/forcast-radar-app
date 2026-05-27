@@ -3,6 +3,7 @@
 import { NWSForecastPeriod } from "@/lib/types";
 import { useUnits } from "../context/UnitContext";
 import React from "react";
+import { formatForecastWind } from "@/lib/utils";
 
 interface ForecastCardProps {
   period: NWSForecastPeriod;
@@ -113,44 +114,43 @@ export default function ForecastCard({ period }: ForecastCardProps) {
       <div className="mt-4 space-y-2">
         <p className="text-md font-medium text-white">{period.shortForecast}</p>
         <p className="text-sm text-gray-400">
-          <span className="font-semibold text-gray-300">Wind:</span>{" "}
-          {period.windDirection} at {period.windSpeed}
+          <span className="font-semibold text-gray-300">Wind: </span>
+          {period.windDirection} at{" "}
+          {formatForecastWind(period.windSpeed, !isImp)}
         </p>
-
-        {period.probabilityOfPrecipitation.value !== null && (
-          <div className="mt-4">
-            {/* Label and Exact Percentage */}
-            <div className="flex justify-between text-sm text-gray-300 mb-1.5">
-              <span className="font-semibold text-gray-200">Precipitation</span>
-              <span
-                className="font-bold drop-shadow-md"
-                style={{
-                  color: getPrecipColor(
-                    period.probabilityOfPrecipitation.value,
-                  ),
-                }}
-              >
-                {period.probabilityOfPrecipitation.value}%
-              </span>
-            </div>
-
-            {/* The Bar Background (Dark track) */}
-            <div className="w-full h-1.5 bg-gray-800/80 rounded-full overflow-hidden">
-              {/* The Dynamic Fill */}
-              <div
-                className="h-full rounded-full transition-all duration-1000 ease-out"
-                style={{
-                  width: `${period.probabilityOfPrecipitation.value}%`,
-                  backgroundColor: getPrecipColor(
-                    period.probabilityOfPrecipitation.value,
-                  ),
-                  boxShadow: `0 0 10px ${getPrecipColor(period.probabilityOfPrecipitation.value)}`,
-                }}
-              ></div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {period.probabilityOfPrecipitation.value !== null && (
+        <div className="mt-4">
+          {/* Label and Exact Percentage */}
+          <div className="flex justify-between text-sm text-gray-300 mb-1.5">
+            <span className="font-semibold text-gray-200">Precipitation</span>
+            <span
+              className="font-bold drop-shadow-md"
+              style={{
+                color: getPrecipColor(period.probabilityOfPrecipitation.value),
+              }}
+            >
+              {period.probabilityOfPrecipitation.value}%
+            </span>
+          </div>
+
+          {/* The Bar Background (Dark track) */}
+          <div className="w-full h-1.5 bg-gray-800/80 rounded-full overflow-hidden">
+            {/* The Dynamic Fill */}
+            <div
+              className="h-full rounded-full transition-all duration-1000 ease-out"
+              style={{
+                width: `${period.probabilityOfPrecipitation.value}%`,
+                backgroundColor: getPrecipColor(
+                  period.probabilityOfPrecipitation.value,
+                ),
+                boxShadow: `0 0 10px ${getPrecipColor(period.probabilityOfPrecipitation.value)}`,
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
 
       {/* Forced text-gray-200 for much higher contrast against the dark background */}
       <p className="text-sm text-gray-200 mt-4 leading-relaxed border-t border-gray-800 pt-4">
