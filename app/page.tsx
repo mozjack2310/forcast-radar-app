@@ -4,6 +4,7 @@ import ForecastCard from "./components/ForecastCard";
 import MapWrapper from "./components/MapWrapper";
 import AlertBanner from "./components/AlertBanner";
 import CurrentConditionsCard from "./components/CurrentConditionsCard";
+import DebugConsole from "./components/DebugConsole";
 import {
   NWSForecastPeriod,
   NWSObservationResponse,
@@ -98,6 +99,8 @@ export default async function Home() {
           <ForecastCard key={period.number} period={period} />
         ))}
       </div>
+      {/* 3. The Debug Console */}
+      <DebugConsole />
     </main>
   );
 }
