@@ -86,7 +86,7 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
   const windDir = toCardinal(nws.windDirection?.value);
 
   return (
-    <div className="flex flex-col h-full border border-[#00c4f5] rounded-xl p-6 bg-[#0b141a]/80 backdrop-blur-md shadow-lg relative overflow-hidden">
+    <div className="relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-white dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-colors duration-300">
       {/* <div className="flex flex-col h-full border border-[#00c4f5] rounded-xl p-6 bg-[#0b141a] shadow-lg relative overflow-hidden skeleton-glass"> */}
       {/* Subtle glowing accent strip at the top */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00c4f5] to-transparent opacity-50"></div>
@@ -107,8 +107,12 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
       {/* Primary Metric: Temperature */}
       <div className="mb-6">
         <div className="flex justify-between items-baseline mb-2 gap-2">
-          <span className="text-6xl font-bold text-white">{tempVal}°</span>
-          <span className="text-xl text-gray-400">{tempUnit}</span>
+          <span className="text-6xl font-bold text-gray-900 dark:text-white">
+            {tempVal}°
+          </span>
+          <span className="text-xl text-gray-950 dark:text-white">
+            {tempUnit}
+          </span>
           <div className="w-[20%] min-w-[48px] max-w-[96px] shrink-0">
             <img
               src={nws.icon}
@@ -117,7 +121,7 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
             />{" "}
           </div>
         </div>
-        <p className="text-gray-300 text-lg capitalize">
+        <p className="text-gray-500 text-lg capitalize">
           {nws.textDescription || "Stable"}
         </p>
       </div>
@@ -126,16 +130,18 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
       <div className="grid grid-cols-2 gap-4 mt-auto">
         {/* NWS Ground Truth (White/Gray Text) */}
         <div className="border-t border-gray-800 pt-3">
-          <p className="text-gray-500 text-xs font-semibold uppercase">Wind</p>
-          <p className="text-gray-200">
+          <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase">
+            Wind
+          </p>
+          <p className="text-gray-500 dark:text-gray-400">
             {windVal} {windUnit} {windDir}
           </p>
         </div>
         <div className="border-t border-gray-800 pt-3">
-          <p className="text-gray-500 text-xs font-semibold uppercase">
+          <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase">
             Pressure
           </p>
-          <p className="text-gray-200">
+          <p className="text-gray-500 dark:text-gray-400">
             {pressVal} {pressUnit}
           </p>
         </div>
@@ -143,7 +149,7 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
           <p className="text-gray-500 text-xs font-semibold uppercase">
             Visibility
           </p>
-          <p className="text-gray-200">
+          <p className="text-gray-500 dark:text-gray-400">
             {visVal} {visUnit}
           </p>
         </div>

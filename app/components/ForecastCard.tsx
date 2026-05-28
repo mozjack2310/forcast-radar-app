@@ -89,8 +89,9 @@ export default function ForecastCard({ period }: ForecastCardProps) {
 
   return (
     <div
-      className={`flex flex-col border p-6 rounded-lg shadow-lg text-gray-200 transition-colors duration-300 ${theme.bg} ${theme.border}`}
+      className={`relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-white dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-colors duration-300 ${theme.bg} ${theme.border}`}
     >
+      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00c4f5] to-transparent opacity-0 dark:opacity-100 transition-opacity duration-300"></div>
       {/* Changed items-center to items-start so the title doesn't awkwardly float */}
       <div className="flex justify-between items-start mb-4 gap-4">
         <h2 className={`text-xl font-semibold ${theme.title} mt-1`}>
@@ -101,7 +102,7 @@ export default function ForecastCard({ period }: ForecastCardProps) {
         <img
           src={period.icon}
           alt={period.shortForecast}
-          className={`w-16 h-16 xl:w-24 xl:h-24 flext-shrink-0 rounded-xl border-2 ${theme.border} object-contain bg-black/20`}
+          className={`w-16 h-16 xl:w-24 xl:h-24 flext-shrink-0 rounded-xl border-2 ${theme.border} object-contain text-gray-900 dark:text-white`}
         />
       </div>
 
@@ -113,8 +114,10 @@ export default function ForecastCard({ period }: ForecastCardProps) {
 
       <div className="mt-4 space-y-2">
         <p className="text-md font-medium text-white">{period.shortForecast}</p>
-        <p className="text-sm text-gray-400">
-          <span className="font-semibold text-gray-300">Wind: </span>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="font-semibold text-gray-500 dark:text-gray-400">
+            Wind:{" "}
+          </span>
           {period.windDirection} at{" "}
           {formatForecastWind(period.windSpeed, !isImp)}
         </p>
@@ -124,7 +127,9 @@ export default function ForecastCard({ period }: ForecastCardProps) {
         <div className="mt-4">
           {/* Label and Exact Percentage */}
           <div className="flex justify-between text-sm text-gray-300 mb-1.5">
-            <span className="font-semibold text-gray-200">Precipitation</span>
+            <span className="font-semibold text-gray-500 dark:text-gray-300">
+              Precipitation
+            </span>
             <span
               className="font-bold drop-shadow-md"
               style={{
@@ -136,7 +141,7 @@ export default function ForecastCard({ period }: ForecastCardProps) {
           </div>
 
           {/* The Bar Background (Dark track) */}
-          <div className="w-full h-1.5 bg-gray-800/80 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-800/80 rounded-full overflow-hidden">
             {/* The Dynamic Fill */}
             <div
               className="h-full rounded-full transition-all duration-1000 ease-out"
@@ -152,8 +157,7 @@ export default function ForecastCard({ period }: ForecastCardProps) {
         </div>
       )}
 
-      {/* Forced text-gray-200 for much higher contrast against the dark background */}
-      <p className="text-sm text-gray-200 mt-4 leading-relaxed border-t border-gray-800 pt-4">
+      <p className="text-sm text-gray-700 dark:text-gray-200 mt-4 leading-relaxed border-t border-gray-800 pt-4">
         {period.detailedForecast}
       </p>
     </div>

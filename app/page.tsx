@@ -100,7 +100,7 @@ export default async function Home() {
         ))}
       </div>
       {/* 3. The Debug Console */}
-      <DebugConsole />
+      <DebugConsole data={{ currentMeteo, currentNWS, forecast }} />
     </main>
   );
 }
