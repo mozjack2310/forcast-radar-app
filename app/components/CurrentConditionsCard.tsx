@@ -85,6 +85,46 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
   // Fallback for wind direction if it's perfectly calm
   const windDir = toCardinal(nws.windDirection?.value);
 
+  // 1. Extract the QC Flag (Default to 'V' if the API omits it during perfect weather)
+  const tempQC = nws?.temperature?.qualityControl || "V";
+
+  // 2. The Translation Dictionary
+  const qcStatus = {
+    V: {
+      isValid: true,
+      icon: "bg-green-500",
+      pulse: "animate-pulse",
+      label: "KBHM ASOS (Live & Valid)",
+    },
+    S: {
+      isValid: false,
+      icon: "bg-yellow-500",
+      pulse: "",
+      label: "Open-Meteo Fallback (NWS Sensor Suspect)",
+    },
+    Z: {
+      isValid: false,
+      icon: "bg-red-500",
+      pulse: "",
+      label: "Open-Meteo Fallback (NWS Sensor Rejected)",
+    },
+    X: {
+      isValid: false,
+      icon: "bg-red-500",
+      pulse: "",
+      label: "Open-Meteo Fallback (NWS Sensor Offline)",
+    },
+  };
+
+  // 3. Evaluate current state (Fallback to 'X' logic if an unknown code appears)
+  const health = qcStatus[tempQC as keyof typeof qcStatus] || qcStatus["X"];
+
+  // 4. The Final Output Variables
+  // If NWS is healthy, use NWS. If not, instantly swap to Open-Meteo.
+  const activeTemp = health.isValid
+    ? nws.temperature.value
+    : meteo.temperature_2m;
+
   return (
     <div className="relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-white dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-colors duration-300">
       {/* <div className="flex flex-col h-full border border-[#00c4f5] rounded-xl p-6 bg-[#0b141a] shadow-lg relative overflow-hidden skeleton-glass"> */}
@@ -107,9 +147,9 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
       {/* Primary Metric: Temperature */}
       <div className="mb-6">
         <div className="flex justify-between items-baseline mb-2 gap-2">
-          <span className="text-6xl font-bold text-gray-900 dark:text-white">
-            {tempVal}°
-          </span>
+          <div className="text-6xl font-extrabold text-gray-900 dark:text-white tracking-tighter">
+            {activeTemp !== null ? `${activeTemp}°F` : "N/A"}
+          </div>
           <span className="text-xl text-gray-950 dark:text-white">
             {tempUnit}
           </span>

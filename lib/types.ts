@@ -53,6 +53,7 @@ export interface NWSForecastResponse {
 export interface NWSValueUnit {
   value: number | null;
   unitCode: string; // e.g., "wmoUnit:degC", "wmoUnit:km_h-1"
+  qualityControl: string | null; // e.g., "V", "S", "Z", "X"
 }
 
 export interface NWSObservationResponse {

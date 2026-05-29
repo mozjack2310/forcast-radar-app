@@ -47,7 +47,7 @@ async function getWeatherData() {
 
   // 3. NEW: Environmental Context Fetch (Open-Meteo)
   // Requesting cloud_cover, uv_index, and precipitation
-  const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=cloud_cover,uv_index,precipitation`;
+  const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,cloud_cover,uv_index,precipitation`;
   const meteoRes = await fetch(meteoUrl, {
     next: { revalidate: 300 },
   });
@@ -74,7 +74,7 @@ export default async function Home() {
         </h1>
 
         {/* Drop the visual toggle right here! */}
-        <UnitToggle />
+        {/* <UnitToggle /> */}
       </div>
 
       {/* 2. The Conditional Layout Swap */}

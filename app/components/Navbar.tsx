@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
-import UnitToggle from "./UnitToggle"; // Uncomment when ready!
+import UnitToggle from "./UnitToggle";
 
 export default function Navbar() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -43,8 +43,10 @@ export default function Navbar() {
             {/* The Gear Icon trigger */}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-gray-400 transition-colors border border-transparent dark:border-slate-800 flex items-center justify-center"
-              aria-label="Open Settings"
+              aria-label="Open Preferences Menu"
+              aria-expanded={isSettingsOpen}
+              aria-controls="preferences-drawer"
+              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-gray-400 transition-colors border border-transparent dark:border-slate-800 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -87,7 +89,10 @@ export default function Navbar() {
           </h2>
           <button
             onClick={() => setIsSettingsOpen(false)}
-            className="p-1 rounded-md text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Close Preferences Menu"
+            aria-expanded={isSettingsOpen}
+            aria-controls="preferences-drawer"
+            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-gray-400 transition-colors border border-transparent dark:border-slate-800 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -132,7 +137,7 @@ export default function Navbar() {
               </span>
               {/* <UnitToggle /> Drop your IMP/MET toggle here! */}
               <div className="text-xs text-gray-500 italic">
-                Toggle coming soon...
+                <UnitToggle />
               </div>
             </div>
           </div>
