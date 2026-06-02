@@ -6,7 +6,7 @@ import { useState } from "react";
 export default function DebugConsole({ data }: { data: any }) {
   // 'minimized' (header only), 'normal' (300px), 'expanded' (600px)
   const [size, setSize] = useState<"minimized" | "normal" | "expanded">(
-    "normal",
+    "minimized",
   );
 
   // Determine the height class based on state

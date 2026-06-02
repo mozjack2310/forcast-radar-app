@@ -1,12 +1,12 @@
 "use client";
 
-import { NWSForecastPeriod } from "@/lib/types";
+import { NWSForecastPeriod, NWSForecastResponse } from "@/lib/types";
 import { useUnits } from "../context/UnitContext";
 import React from "react";
 import { formatForecastWind } from "@/lib/utils";
 
 interface ForecastCardProps {
-  period: NWSForecastPeriod;
+  period: NWSForecastResponse["properties"]["periods"][number];
 }
 
 // This function maps the precipitation chance to a specific color, creating a gradient effect that intensifies as the chance increases. The thresholds are designed to provide a clear visual distinction between different levels of precipitation risk, making it easier for users to quickly assess the forecast at a glance.
@@ -33,7 +33,17 @@ function getPrecipColor(chance: number | null) {
   return "#06b6d4"; // 90-100%: Almost black-green (Green-950)
 }
 
-function getWeatherTheme(forecast: string) {
+function getWeatherTheme(forecast: string | undefined | null) {
+  // If the API drops the string, fail gracefully to the default dark theme
+  if (!forecast) {
+    return {
+      bg: "bg-[#0b1014]",
+      border: "border-gray-800",
+      title: "text-[#00c4f5]",
+      temp: "text-[#21e2d2]",
+    };
+  }
+
   const lower = forecast.toLowerCase();
 
   if (
@@ -88,78 +98,90 @@ export default function ForecastCard({ period }: ForecastCardProps) {
   const theme = getWeatherTheme(period.shortForecast);
 
   return (
-    <div
-      className={`relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-white dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-colors duration-300 ${theme.bg} ${theme.border}`}
-    >
-      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00c4f5] to-transparent opacity-0 dark:opacity-100 transition-opacity duration-300"></div>
-      {/* Changed items-center to items-start so the title doesn't awkwardly float */}
-      <div className="flex justify-between items-start mb-4 gap-4">
-        <h2 className={`text-xl font-semibold ${theme.title} mt-1`}>
-          {period.name}
-        </h2>
+    <div className="relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-colors duration-300">
+      {/* The Cyber-Glow Top Edge */}
+      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00c4f5] to-transparent dark:opacity-100 transition-opacity duration-300" />
 
-        {/* Swapped rounded-full for rounded-xl, and bumped size to w-24 h-24 */}
-        <img
-          src={period.icon}
-          alt={period.shortForecast}
-          className={`w-16 h-16 xl:w-24 xl:h-24 flext-shrink-0 rounded-xl border-2 ${theme.border} object-contain text-gray-900 dark:text-white`}
-        />
-      </div>
-
-      <div className="my-2">
-        <span className={`text-4xl font-bold ${theme.temp}`}>
-          {displayTemp}°{displayUnit}
-        </span>
-      </div>
-
-      <div className="mt-4 space-y-2">
-        <p className="text-md font-medium text-white">{period.shortForecast}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          <span className="font-semibold text-gray-500 dark:text-gray-400">
-            Wind:{" "}
-          </span>
-          {period.windDirection} at{" "}
-          {formatForecastWind(period.windSpeed, !isImp)}
-        </p>
-      </div>
-
-      {period.probabilityOfPrecipitation.value !== null && (
-        <div className="mt-4">
-          {/* Label and Exact Percentage */}
-          <div className="flex justify-between text-sm text-gray-300 mb-1.5">
-            <span className="font-semibold text-gray-500 dark:text-gray-300">
-              Precipitation
-            </span>
-            <span
-              className="font-bold drop-shadow-md"
-              style={{
-                color: getPrecipColor(period.probabilityOfPrecipitation.value),
-              }}
-            >
-              {period.probabilityOfPrecipitation.value}%
-            </span>
+      {/* --- TOP HALF (Flex Grow takes up the slack if text is missing) --- */}
+      <div className="flex flex-col flex-grow">
+        {/* Header, Temp & Icon */}
+        <div className="flex justify-between items-start mb-4 gap-4">
+          <div className="flex flex-col">
+            <h2 className={`text-xl font-semibold ${theme.title} tracking-wide`}>
+              {period.name}
+            </h2>
+            <div className="mt-2">
+              <span className={`text-4xl font-bold ${theme.temp} dark:text-white`}>
+                {displayTemp}°{displayUnit}
+              </span>
+            </div>
           </div>
 
-          {/* The Bar Background (Dark track) */}
-          <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-800/80 rounded-full overflow-hidden">
-            {/* The Dynamic Fill */}
-            <div
-              className="h-full rounded-full transition-all duration-1000 ease-out"
-              style={{
-                width: `${period.probabilityOfPrecipitation.value}%`,
-                backgroundColor: getPrecipColor(
-                  period.probabilityOfPrecipitation.value,
-                ),
-                boxShadow: `0 0 10px ${getPrecipColor(period.probabilityOfPrecipitation.value)}`,
-              }}
-            ></div>
+          <div className="shrink-0">
+            <img
+              src={period.icon}
+              alt={period.shortForecast}
+              className={`w-16 h-16 flex-shrink-0 rounded-xl ${theme.border} border object-contain text-gray-300 bg-slate-800 dark:bg-white/10 p-1 shadow-sm`}
+            />
           </div>
         </div>
-      )}
 
-      <p className="text-sm text-gray-700 dark:text-gray-200 mt-4 leading-relaxed border-t border-gray-800 pt-4">
-        {period.detailedForecast}
-      </p>
+        {/* Short Forecast */}
+        <div className="mt-2 space-y-2">
+          <p className="text-md font-medium text-gray-700 dark:text-gray-200 mb-4">
+            {period.shortForecast}
+          </p>
+
+          {/* Wind Info */}
+          <div className="space-y-4">
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase">
+              Wind: {period.windDirection} at {formatForecastWind(period.windSpeed, !isImp)}
+            </p>
+          </div>
+        </div>
+
+        {/* Precipitation Bar */}
+        {period.probabilityOfPrecipitation?.value !== null && period.probabilityOfPrecipitation?.value !== undefined && (
+          <div className="w-full mt-4">
+            {/* Label and Exact Percentage */}
+            <div className="flex justify-between text-sm text-gray-300 mb-1.5">
+              <span className="font-semibold text-gray-500 dark:text-gray-300">
+                Precipitation
+              </span>
+              <span
+                className="font-bold drop-shadow-md"
+                style={{
+                  color: getPrecipColor(period.probabilityOfPrecipitation.value),
+                }}
+              >
+                {period.probabilityOfPrecipitation.value}%
+              </span>
+            </div>
+
+            {/* The Bar Background (Dark track) */}
+            <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-800/80 rounded-full overflow-hidden">
+              {/* The Dynamic Fill */}
+              <div
+                className="h-full rounded-full transition-all duration-1000 ease-out"
+                style={{
+                  width: `${period.probabilityOfPrecipitation.value}%`,
+                  backgroundColor: getPrecipColor(
+                    period.probabilityOfPrecipitation.value,
+                  ),
+                  boxShadow: `0 0 10px ${getPrecipColor(period.probabilityOfPrecipitation.value)}`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* --- BOTTOM HALF (Locked to the bottom by the top half's flex-grow) --- */}
+      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-800 flex-shrink-0">
+        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+          {period.detailedForecast}
+        </p>
+      </div>
     </div>
   );
 }

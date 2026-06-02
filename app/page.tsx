@@ -47,7 +47,7 @@ async function getWeatherData() {
 
   // 3. NEW: Environmental Context Fetch (Open-Meteo)
   // Requesting cloud_cover, uv_index, and precipitation
-  const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,cloud_cover,uv_index,precipitation`;
+  const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&temperature_unit=fahrenheit&current=temperature_2m,cloud_cover,uv_index,precipitation`;
   const meteoRes = await fetch(meteoUrl, {
     next: { revalidate: 300 },
   });
@@ -68,25 +68,34 @@ export default async function Home() {
       {/* 1. The Springboard Toast Notification */}
       <AlertBanner />
       {/* Header */}
-      <div className="flex justify-between items-end mb-8">
-        <h1 className="text-3xl font-bold text-[#d4ba98]">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+        {/* The Main Gradient Title */}
+        <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#00c4f5] to-blue-600 drop-shadow-sm tracking-tight">
           Birmingham Forecast & Radar
         </h1>
 
+        {/* The Live Telemetry Badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 shadow-sm w-fit">
+          <span className="w-2 h-2 rounded-full bg-[#00c4f5] animate-pulse"></span>
+          <span className="text-[#00c4f5] text-xs font-mono tracking-widest uppercase font-semibold">
+            Live Telemetry
+          </span>
+        </div>
+
         {/* Drop the visual toggle right here! */}
-        {/* <UnitToggle /> */}
+        <UnitToggle />
       </div>
 
-      {/* 2. The Conditional Layout Swap */}
+      {/* 2. The Conditional Layout Swap
 
       {/* --- STANDARD MODE --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch w-full mt-6">
         {/* Hybrid Now Card (Left Third) */}
-        <div className="lg:col-span-1 h-full">
+        <div className="flex flex-col h-full">
           <CurrentConditionsCard nws={currentNWS} meteo={currentMeteo} />
         </div>
         {/* The Live Radar (Right Two-Thirds) */}
-        <div className="lg:col-span-2 relative z-0">
+        <div className="flex flex-col h-full">
           {/* This calls the wrapper, which safely loads the map */}
           <MapWrapper />
         </div>
@@ -94,8 +103,8 @@ export default async function Home() {
 
       {/* The Forecast Cards Grid */}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-        {forecast.slice(0, 4).map((period: NWSForecastPeriod) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-8">
+        {forecast.map((period: NWSForecastPeriod) => (
           <ForecastCard key={period.number} period={period} />
         ))}
       </div>

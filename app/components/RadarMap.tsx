@@ -16,7 +16,7 @@ export default function RadarMap() {
 
   if (!mounted) {
     return (
-      <div className="w-full h-[450px] bg-gray-100 dark:bg-slate-900 rounded-xl flex items-center justify-center border border-gray-200 dark:border-slate-800 animate-pulse">
+      <div className="isolate w-full h-[450px] bg-gray-100 dark:bg-slate-900 rounded-xl flex items-center justify-center border border-gray-200 dark:border-slate-800 animate-pulse">
         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
           Loading Weather Radar Matrix...
         </span>
@@ -36,7 +36,7 @@ export default function RadarMap() {
     : "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}";
 
   return (
-    <div className="w-full h-[450px] rounded-xl overflow-hidden border border-gray-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
+    <div className="relative z-0 w-full h-[450px] rounded-xl overflow-hidden border border-gray-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
       <MapContainer
         center={[33.5186, -86.8104]} // Centered on Birmingham
         zoom={8}

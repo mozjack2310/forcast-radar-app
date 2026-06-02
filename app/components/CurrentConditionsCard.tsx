@@ -42,12 +42,16 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
   // 3. Dynamic Math based on Context State
 
   // NWS Temp is natively Celsius
-  const tempRaw = nws.temperature?.value;
+  const tempRaw = nws?.temperature?.value;
+
   const tempVal = isImp
-    ? tempRaw
+    ? tempRaw != null // <-- The magic fix: explicitly check for null/undefined, allowing 0
       ? Math.round((tempRaw * 9) / 5 + 32)
       : "--"
-    : Math.round(tempRaw || 0);
+    : tempRaw != null
+      ? Math.round(tempRaw)
+      : "--";
+
   const tempUnit = isImp ? "F" : "C";
 
   // NWS Wind is natively km/h
@@ -121,12 +125,27 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
 
   // 4. The Final Output Variables
   // If NWS is healthy, use NWS. If not, instantly swap to Open-Meteo.
-  const activeTemp = health.isValid
-    ? nws.temperature.value
-    : meteo.temperature_2m;
+  // Extract the raw NWS Celsius value and convert to Fahrenheit: (C * 9/5) + 32
+  const rawNwsC = nws?.temperature?.value;
+  const nwsTempF = meteo?.temperature_2m;
+
+  // The Final Fallback (Assuming your Open-Meteo URL is returning Fahrenheit)
+  let displayTemp: number | string = "--";
+
+  if (health.isValid && rawNwsC != null) {
+    // If NWS is healthy, convert its native Celsius based on the toggle
+    displayTemp = isImp
+      ? Math.round((rawNwsC * 9) / 5 + 32)
+      : Math.round(rawNwsC);
+  } else if (nwsTempF != null) {
+    // If NWS fails, use Meteo and convert its native Fahrenheit based on the toggle
+    displayTemp = isImp
+      ? Math.round(nwsTempF)
+      : Math.round(((nwsTempF - 32) * 5) / 9);
+  }
 
   return (
-    <div className="relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-white dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-colors duration-300">
+    <div className="relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-colors duration-300">
       {/* <div className="flex flex-col h-full border border-[#00c4f5] rounded-xl p-6 bg-[#0b141a] shadow-lg relative overflow-hidden skeleton-glass"> */}
       {/* Subtle glowing accent strip at the top */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00c4f5] to-transparent opacity-50"></div>
@@ -148,7 +167,7 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
       <div className="mb-6">
         <div className="flex justify-between items-baseline mb-2 gap-2">
           <div className="text-6xl font-extrabold text-gray-900 dark:text-white tracking-tighter">
-            {activeTemp !== null ? `${activeTemp}°F` : "N/A"}
+            {displayTemp !== "--" ? `${displayTemp}°` : "N/A"}
           </div>
           <span className="text-xl text-gray-950 dark:text-white">
             {tempUnit}
@@ -156,7 +175,9 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
           <div className="w-[20%] min-w-[48px] max-w-[96px] shrink-0">
             <img
               src={nws.icon}
-              className="w-full h-auto rounded-full bg-white/10 p-2 shadow-lg object-contain"
+              className={
+                "w-16 h-16 rounded-xl object-contain flex-shrink-0 border-2 ${theme.border} bg-slate-800 dark:bg-white/10 p-1 shadow-sm"
+              }
               alt="Current Weather"
             />{" "}
           </div>
@@ -211,7 +232,9 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
           <p className="text-[#00c4f5] opacity-70 text-xs font-semibold uppercase">
             Precip/Hr
           </p>
-          <p className="text-[#00c4f5] font-medium">{meteo.precipitation} mm</p>
+          <p className="text-[#00c4f5] font-medium">
+            {isImp ? (meteo.precipitation / 25.4).toFixed(2) + " in" : meteo.precipitation + " mm"}
+          </p>
         </div>
       </div>
     </div>
