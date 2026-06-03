@@ -8,7 +8,7 @@ export async function getHourly() {
       "User-Agent": "(FORRADAPP_v1.0, bjgarner@icloud.com)",
       "Accept": "application/geo+json",
     },
-    next: { revalidate: 3600 } // This is 'Caching'—don't hit the API more than once an hour
+    cache: "no-store"
   });
 
   if (!res.ok) {

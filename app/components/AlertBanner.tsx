@@ -11,7 +11,7 @@ export default function AlertBanner() {
     const fetchAlerts = async () => {
       try {
         // Point this to your actual RHEL Flask API endpoint
-        const response = await fetch("http://192.168.1.101:5000/api/alerts");
+        const response = await fetch("http://192.168.1.101:5000/api/alerts", { cache: "no-store" });
 
         if (!response.ok) {
           throw new Error("Network response was not ok");

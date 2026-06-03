@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     // 1. Fetch from your local Python API proxy
@@ -7,7 +9,7 @@ export async function GET() {
     const response = await fetch("http://192.168.1.101:5000/nws-data", {
       // Next.js caching: Only hit your Python proxy once every 5 minutes (300 seconds)
       // This prevents the Matrix from accidentally DDoS'ing your local server
-      next: { revalidate: 300 },
+      cache: "no-store",
     });
 
     if (!response.ok) {

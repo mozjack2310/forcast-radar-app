@@ -11,6 +11,8 @@ import {
   OpenMeteoCurrentResponse,
 } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 // We define the latitude and longitude for Birmingham, AL, which will be used to fetch both the forecast and the radar data. The station ID is also set for fetching current conditions from the NWS API.
 const LAT = 33.5186;
 const LON = -86.8104;
@@ -21,7 +23,7 @@ async function getWeatherData() {
   await new Promise((resolve) => setTimeout(resolve, 3000)); // Simulate network delay
   const pointRes = await fetch(`https://api.weather.gov/points/${LAT},${LON}`, {
     headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
-    next: { revalidate: 3600 },
+    cache: "no-store",
   });
 
   if (!pointRes.ok) throw new Error("Failed to fetch grid point");
@@ -30,7 +32,7 @@ async function getWeatherData() {
   const forecastUrl = pointData.properties.forecast;
   const forecastRes = await fetch(forecastUrl, {
     headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
-    next: { revalidate: 900 },
+    cache: "no-store",
   });
 
   const forecastData = await forecastRes.json();
@@ -40,7 +42,7 @@ async function getWeatherData() {
     `https://api.weather.gov/stations/${STATION_ID}/observations/latest`,
     {
       headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
-      next: { revalidate: 300 }, // Revalidate every 5 mins
+      cache: "no-store", // Revalidate every 5 mins
     },
   );
   const observationData: NWSObservationResponse = await obsRes.json();
@@ -49,7 +51,7 @@ async function getWeatherData() {
   // Requesting cloud_cover, uv_index, and precipitation
   const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&temperature_unit=fahrenheit&current=temperature_2m,cloud_cover,uv_index,precipitation`;
   const meteoRes = await fetch(meteoUrl, {
-    next: { revalidate: 300 },
+    cache: "no-store",
   });
   const meteoData: OpenMeteoCurrentResponse = await meteoRes.json();
 
