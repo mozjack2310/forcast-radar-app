@@ -30,6 +30,9 @@ export async function GET() {
       // Grab the pre-shortened description from your Python proxy
       c: (data.page_1_overview?.short_desc || "Unknown").slice(0, 16),
 
+      // Source
+      s: data?.source || "Unknown",
+
       // If the Python proxy reports a Cache Hit or Success, the data is healthy
       qc:
         data.status &&
@@ -48,6 +51,7 @@ export async function GET() {
     return NextResponse.json({
       t: "--",
       c: "API ERROR",
+      s: "Unknown",
       qc: 0,
     });
   }

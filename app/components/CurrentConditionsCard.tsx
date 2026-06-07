@@ -144,6 +144,8 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
       : Math.round(((nwsTempF - 32) * 5) / 9);
   }
 
+  const isFallback = nwsTempF == null; // or rawNwsC == null, depending on your exact variable names above
+
   return (
     <div className="relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-colors duration-300">
       {/* <div className="flex flex-col h-full border border-[#00c4f5] rounded-xl p-6 bg-[#0b141a] shadow-lg relative overflow-hidden skeleton-glass"> */}
@@ -157,8 +159,12 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
             Live Conditions
           </h2>
           <p className="text-gray-400 text-xs mt-1 font-mono flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            KBHM ASOS + HRRR Model
+            <span
+              className={`w-2 h-2 rounded-full ${isFallback ? "bg-yellow-400" : "bg-green-500 animate-pulse"}`}
+            ></span>
+            {isFallback
+              ? "OPEN-METEO FALLBACK ACTIVE"
+              : "KBHM ASOS + HRRR MODEL"}
           </p>
         </div>
       </div>
@@ -233,7 +239,9 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
             Precip/Hr
           </p>
           <p className="text-[#00c4f5] font-medium">
-            {isImp ? (meteo.precipitation / 25.4).toFixed(2) + " in" : meteo.precipitation + " mm"}
+            {isImp
+              ? (meteo.precipitation / 25.4).toFixed(2) + " in"
+              : meteo.precipitation + " mm"}
           </p>
         </div>
       </div>
