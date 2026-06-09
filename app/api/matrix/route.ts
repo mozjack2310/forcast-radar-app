@@ -6,7 +6,7 @@ export async function GET() {
   try {
     // 1. Fetch from your local Python API proxy
     // Replace 'YOUR_PROXY_IP:PORT' with the actual internal IP of your proxy
-    const response = await fetch("http://192.168.50.101:5000/nws-data", {
+    const response = await fetch("http://weather-proxy:5000/nws-data", {
       // Next.js caching: Only hit your Python proxy once every 5 minutes (300 seconds)
       // This prevents the Matrix from accidentally DDoS'ing your local server
       cache: "no-store",
