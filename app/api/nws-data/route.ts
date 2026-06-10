@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const res = await fetch("http://weather-proxy:5000/api/nws-data", {
+    const res = await fetch("http://weather-proxy:5000/nws-data", {
       cache: "no-store",
     });
 
