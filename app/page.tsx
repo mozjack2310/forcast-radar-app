@@ -11,8 +11,6 @@ import {
   OpenMeteoCurrentResponse,
 } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-
 // We define the latitude and longitude for Birmingham, AL, which will be used to fetch both the forecast and the radar data. The station ID is also set for fetching current conditions from the NWS API.
 const LAT = 33.5186;
 const LON = -86.8104;
@@ -23,7 +21,7 @@ async function getWeatherData() {
   await new Promise((resolve) => setTimeout(resolve, 3000)); // Simulate network delay
   const pointRes = await fetch(`https://api.weather.gov/points/${LAT},${LON}`, {
     headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
-    cache: "no-store",
+    next: { revalidate: 84000 }, // Cache for 24 hours
   });
 
   if (!pointRes.ok) throw new Error("Failed to fetch grid point");
@@ -32,7 +30,7 @@ async function getWeatherData() {
   const forecastUrl = pointData.properties.forecast;
   const forecastRes = await fetch(forecastUrl, {
     headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
-    cache: "no-store",
+    next: { revalidate: 3600 }, // Cache for 1 hour
   });
 
   const forecastData = await forecastRes.json();
@@ -42,23 +40,34 @@ async function getWeatherData() {
     `https://api.weather.gov/stations/${STATION_ID}/observations/latest`,
     {
       headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
-      cache: "no-store", // Revalidate every 5 mins
+      next: { revalidate: 300 }, // Revalidate every 5 mins
     },
   );
-  const observationData: NWSObservationResponse = await obsRes.json();
+
+  // Temporarily mock the external call to test your revalidate logic
+  const testRes = await fetch(
+    "https://worldtimeapi.org/api/timezone/America/Chicago",
+    {
+      next: { revalidate: 30 }, // Cache it for 30 seconds
+    },
+  );
+  const data = await testRes.json();
+  console.log("CACHE TEST TIME:", data.datetime);
+
+  // const observationData: NWSObservationResponse = await obsRes.json();
 
   // 3. NEW: Environmental Context Fetch (Open-Meteo)
   // Requesting cloud_cover, uv_index, and precipitation
-  const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&temperature_unit=fahrenheit&current=temperature_2m,cloud_cover,uv_index,precipitation`;
-  const meteoRes = await fetch(meteoUrl, {
-    cache: "no-store",
-  });
-  const meteoData: OpenMeteoCurrentResponse = await meteoRes.json();
+  // const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&temperature_unit=fahrenheit&current=temperature_2m,cloud_cover,uv_index,precipitation`;
+  // const meteoRes = await fetch(meteoUrl, {
+  // next: { revalidate: 900 }, // Revalidate every 15 mins
+  // });
+  // const meteoData: OpenMeteoCurrentResponse = await meteoRes.json();
 
   return {
     forecast: forecastData.properties.periods,
-    currentNWS: observationData.properties,
-    currentMeteo: meteoData.current,
+    currentNWS: null,
+    currentMeteo: null,
   };
 }
 
