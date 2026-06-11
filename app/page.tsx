@@ -103,7 +103,11 @@ export default async function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch w-full mt-6">
         {/* Hybrid Now Card (Left Third) */}
         <div className="flex flex-col h-full">
-          <CurrentConditionsCard nws={currentNWS} meteo={currentMeteo} />
+          {currentNWS && currentMeteo ? (
+            <CurrentConditionsCard nws={currentNWS} meteo={currentMeteo} />
+          ) : (
+            <div className="p-4 text-yellow-500">Awaiting API Cooldown...</div>
+          )}
         </div>
         {/* The Live Radar (Right Two-Thirds) */}
         <div className="flex flex-col h-full">
