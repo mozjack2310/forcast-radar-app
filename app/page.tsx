@@ -18,57 +18,64 @@ const LON = -86.8104;
 const STATION_ID = "KBHM"; // Birmingham, AL station for current conditions
 
 async function getWeatherData() {
-  await new Promise((resolve) => setTimeout(resolve, 3000)); // Simulate network delay
-  const pointRes = await fetch(`https://api.weather.gov/points/${LAT},${LON}`, {
-    headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
-    next: { revalidate: 84000 }, // Cache for 24 hours
-  });
+  try {
+    // --- 1. Your Actual NWS Fetches ---
+    await new Promise((resolve) => setTimeout(resolve, 3000)); // Simulate delay
 
-  if (!pointRes.ok) throw new Error("Failed to fetch grid point");
-  const pointData = await pointRes.json();
+    const pointRes = await fetch(
+      `https://api.weather.gov/points/${LAT},${LON}`,
+      {
+        headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
+        next: { revalidate: 86400 }, // Cache for 24 hours
+      },
+    );
 
-  const forecastUrl = pointData.properties.forecast;
-  const forecastRes = await fetch(forecastUrl, {
-    headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
-    next: { revalidate: 3600 }, // Cache for 1 hour
-  });
+    if (!pointRes.ok) throw new Error("Failed to fetch grid point");
+    const pointData = await pointRes.json();
 
-  const forecastData = await forecastRes.json();
-
-  // 2. NEW: Current Observations Fetch (NWS KBHM)
-  const obsRes = await fetch(
-    `https://api.weather.gov/stations/${STATION_ID}/observations/latest`,
-    {
+    const forecastUrl = pointData.properties.forecast;
+    const forecastRes = await fetch(forecastUrl, {
       headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
-      next: { revalidate: 300 }, // Revalidate every 5 mins
-    },
-  );
+      next: { revalidate: 3600 }, // Cache for 1 hour
+    });
 
-  // Temporarily mock the external call to test your revalidate logic
-  const testRes = await fetch(
-    "https://worldtimeapi.org/api/timezone/America/Chicago",
-    {
-      next: { revalidate: 30 }, // Cache it for 30 seconds
-    },
-  );
-  const data = await testRes.json();
-  console.log("CACHE TEST TIME:", data.datetime);
+    const forecastData = await forecastRes.json();
 
-  // const observationData: NWSObservationResponse = await obsRes.json();
+    const obsRes = await fetch(
+      `https://api.weather.gov/stations/${STATION_ID}/observations/latest`,
+      {
+        headers: { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" },
+        next: { revalidate: 300 }, // Revalidate every 5 mins
+      },
+    );
 
-  // 3. NEW: Environmental Context Fetch (Open-Meteo)
-  // Requesting cloud_cover, uv_index, and precipitation
-  // const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&temperature_unit=fahrenheit&current=temperature_2m,cloud_cover,uv_index,precipitation`;
-  // const meteoRes = await fetch(meteoUrl, {
-  // next: { revalidate: 900 }, // Revalidate every 15 mins
-  // });
-  // const meteoData: OpenMeteoCurrentResponse = await meteoRes.json();
+    // --- 2. The Mock Cache Test ---
+    const testRes = await fetch(
+      "https://worldtimeapi.org/api/timezone/America/Chicago",
+      {
+        next: { revalidate: 30 }, // Cache it for 30 seconds
+      },
+    );
+    const data = await testRes.json();
+    console.log("CACHE TEST TIME:", data.datetime);
 
-  return {
-    forecast: forecastData.properties.periods,
-    currentNWS: null,
-    currentMeteo: null,
-  };
+    // --- 3. The Safe Return (Testing Mode) ---
+    return {
+      forecast: forecastData.properties.periods,
+      currentNWS: null, // Safely null while testing
+      currentMeteo: null, // Safely null while testing Open-Meteo ban
+    };
+  } catch (error) {
+    // --- 4. The NOC Failsafe ---
+    // If the network drops the connection during the Docker build,
+    // catch the ECONNRESET error and safely finish the compile!
+    console.error("Network hiccup during build. Using safe fallback payload.");
+    return {
+      forecast: null,
+      currentNWS: null,
+      currentMeteo: null,
+    };
+  }
 }
 
 export default async function Home() {
