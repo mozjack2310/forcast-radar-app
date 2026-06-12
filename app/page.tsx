@@ -104,16 +104,23 @@ export default async function Home() {
         <UnitToggle />
       </div>
 
-      {/* 2. The Conditional Layout Swap
+      {/* 2. The Conditional Layout Swap */}
 
-      {/* --- STANDARD MODE --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch w-full mt-6">
-        {/* Hybrid Now Card (Left Third) */}
-        <div className="flex flex-col h-full">
+      <div className="flex flex-col gap-8">
+        {/* --- 1. Current Conditions Failsafe --- */}
+        <div>
           {currentNWS && currentMeteo ? (
             <CurrentConditionsCard nws={currentNWS} meteo={currentMeteo} />
           ) : (
-            <div className="p-4 text-yellow-500">Awaiting API Cooldown...</div>
+            // The Offline UI State
+            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-700 rounded-xl bg-gray-900/50">
+              <span className="text-yellow-500 font-mono text-xl font-bold mb-2">
+                ⚠ SYSTEM AWAITING DATA
+              </span>
+              <span className="text-gray-400 font-mono text-sm">
+                Proxy initializing or waiting out API rate limit...
+              </span>
+            </div>
           )}
         </div>
         {/* The Live Radar (Right Two-Thirds) */}
@@ -125,10 +132,21 @@ export default async function Home() {
 
       {/* The Forecast Cards Grid */}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-8">
-        {forecast.map((period: NWSForecastPeriod) => (
-          <ForecastCard key={period.number} period={period} />
-        ))}
+      {/* --- 2. The 7-Day Forecast Failsafe --- */}
+      <div className="flex flex-col gap-4">
+        {forecast ? (
+          // If we have data, map it
+          forecast.map((period: NWSForecastPeriod) => (
+            <ForecastCard key={period.number} period={period} />
+          ))
+        ) : (
+          // The Offline UI State
+          <div className="flex items-center justify-center h-32 border-2 border-dashed border-gray-700 rounded-xl bg-gray-900/50">
+            <span className="text-yellow-500 font-mono text-lg font-bold">
+              ⚠ FORECAST MODEL OFFLINE
+            </span>
+          </div>
+        )}
       </div>
       {/* 3. The Debug Console */}
       <DebugConsole data={{ currentMeteo, currentNWS, forecast }} />
