@@ -1,0 +1,21 @@
+# --- Environments & Secrets (Critical) ---
+.env
+.venv/
+venv/
+ENV/
+
+# --- Python Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Flask & Microservice Specifics ---
+instance/
+*.log
+
+# --- IDE Settings ---
+.vscode/
+
+# --- OS Junk ---
+.DS_Store
+Thumbs.db

@@ -1,0 +1,49 @@
+services:
+  redis-cache:
+    image: redis:7.4-alpine
+    container_name: forrad-redis
+    restart: unless-stopped
+    networks:
+      - forrad-net
+
+  weather-proxy:
+    build: ./weather-proxy
+    container_name: forrad-weather-proxy
+    restart: unless-stopped
+    environment:
+      - REDIS_HOST=redis-cache
+      - REDIS_PORT=6379
+    networks:
+      - forrad-net
+    depends_on:
+      - redis-cache
+
+  forrad-alerts:
+    build: ./forrad-alerts
+    container_name: forrad-alerts-daemon
+    restart: unless-stopped
+    environment:
+      # Matches the os.getenv() in your Python script perfectly
+      - REDIS_IP=redis-cache 
+      # No REDIS_PASSWORD needed since our internal Redis container doesn't enforce auth by default
+    networks:
+      - forrad-net
+    depends_on:
+      - redis-cache
+
+  forcast-radar-app:
+    build: ./forcast-radar-app
+    container_name: forrad-nextjs-gateway
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://weather-proxy:5000 
+    networks:
+      - forrad-net
+    depends_on:
+      - weather-proxy
+
+networks:
+  forrad-net:
+    driver: bridge
