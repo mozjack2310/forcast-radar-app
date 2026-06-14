@@ -98,7 +98,7 @@ export default function ForecastCard({ period }: ForecastCardProps) {
   const theme = getWeatherTheme(period.shortForecast);
 
   return (
-    <div className="relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-colors duration-300">
+    <div className="relative flex flex-col h-full p-6 overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-900/80 dark:backdrop-blur-md border border-gray-200 dark:border-slate-800 shadow-lg transition-[colors,transform,shadow] duration-300 transform-gpu will-change-transform hover:scale-[1.02] hover:shadow-xl">
       {/* The Cyber-Glow Top Edge */}
       <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00c4f5] to-transparent dark:opacity-100 transition-opacity duration-300" />
 

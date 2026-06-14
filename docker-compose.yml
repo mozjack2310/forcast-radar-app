@@ -7,9 +7,12 @@ services:
       - forrad-net
 
   weather-proxy:
-    build: ./weather-proxy
+    build: 
+      context: ./weather-proxy
+    ports:
+      - "5000:5000"
     container_name: forrad-weather-proxy
-    restart: unless-stopped
+    restart: always
     environment:
       - REDIS_HOST=redis-cache
       - REDIS_PORT=6379

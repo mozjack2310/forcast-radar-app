@@ -82,5 +82,9 @@ export interface OpenMeteoCurrentResponse {
     uv_index: number; // Standard index
     is_day: number; // 1 for day, 0 for night
     precipitation: number; // mm
+    wind_speed_10m: number; // mph
+    wind_direction_10m: number; // Degrees
+    apparent_temperature: number; // Feels-like in Fahrenheit
+    visibility: number; // Miles
   };
 }

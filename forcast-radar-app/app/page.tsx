@@ -51,9 +51,9 @@ async function getWeatherData() {
     let currentMeteoData = null;
     try {
       const meteoRes = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph`,
-        { next: { revalidate: 300 } }
-      );
+        `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,cloud_cover,precipitation,wind_speed_10m,wind_direction_10m,uv_index,apparent_temperature,is_day,surface_pressure&temperature_unit=fahrenheit&wind_speed_unit=mph`,
+      { next: { revalidate: 300 } }
+    );
       
       if (meteoRes.ok) {
         const meteoJson = await meteoRes.json();
@@ -129,7 +129,7 @@ export default async function Home() {
           )}
         </div>
         {/* The Live Radar (Right Two-Thirds) */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full mb-8">
           {/* This calls the wrapper, which safely loads the map */}
           <MapWrapper />
         </div>
@@ -138,7 +138,7 @@ export default async function Home() {
       {/* The Forecast Cards Grid */}
 
       {/* --- 2. The 7-Day Forecast Failsafe --- */}
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 w-full">
         {forecast ? (
           // If we have data, map it
           forecast.map((period: NWSForecastPeriod) => (
