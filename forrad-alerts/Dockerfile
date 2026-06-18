@@ -1,5 +1,6 @@
-# Start with the same lightweight Python environment you used for your proxy
-FROM python:3.12-slim
+# Use the official Red Hat UBI 10 Python 3.12 image as the base
+FROM registry.access.redhat.com/ubi10/python-312:latest
+
 
 # Set the working directory inside the container
 WORKDIR /app

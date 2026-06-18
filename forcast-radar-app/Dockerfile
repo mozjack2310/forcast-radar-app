@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copy package management files
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --legacy-peer-deps --no-audit --no-fund 
 
 # ==========================================
 # Stage 2: Build the Application

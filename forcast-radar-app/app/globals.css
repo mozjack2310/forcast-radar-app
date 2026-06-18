@@ -29,6 +29,17 @@ body {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Custom Leaflet Popup Styling for Dark Mode compatibility */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: transparent;
+  box-shadow: none;
+}
+.leaflet-popup-content {
+  margin: 0;
+  width: auto;
+}
+
 @keyframes pulse {
   0%,
   100% {
