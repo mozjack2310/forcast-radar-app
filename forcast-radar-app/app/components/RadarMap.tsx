@@ -55,36 +55,51 @@ export default function RadarMap() {
     startY: number;
   } | null>(null);
 
-  // Prevent SSR execution crashes
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
 
-  // 2. The click handler that fetches data from your Flask API
-  const handleMapClick = (lat: number, lng: number, x: number, y: number) => {
-    // Offset the initial popup position so it doesn't cover the exact pixel clicked
-    const popupWidth = 320;
-    // Keep it within the bounds of a typical 450px height map container
-    const safeX = Math.max(
-      10,
-      Math.min(x - popupWidth / 2, window.innerWidth - popupWidth - 40),
-    );
-    const safeY = Math.max(10, y + 16);
-
-    setPosition({ x: safeX, y: safeY, lat, lng });
+   // 1. The Single Source of Truth for fetching data
+  const triggerForecastFetch = (lat: number, lng: number, x: number, y: number, signal?: AbortSignal) => {
+    setPosition({ x, y, lat, lng });
     setLoading(true);
 
-    // Hit your local Flask backend
-    fetch(`http://localhost:5001/api/forecast?lat=${lat}&lon=${lng}`)
-      .then((res) => res.json())
+    // Dynamic endpoint routing for Production vs WSL
+    const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+    fetch(`${baseApiUrl}/api/forecast?lat=${lat}&lon=${lng}`, { signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`API returned bad status code: ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         setForecastData(data.data);
         setLoading(false);
       })
       .catch((err) => {
+        if (err.name === 'AbortError') return; // Ignore React unmount aborts
         console.error("Failed to fetch forecast:", err);
         setLoading(false);
       });
+  };
+
+  // 2. The Auto-Load (Fires once on startup)
+  useEffect(() => {
+    const controller = new AbortController();
+    const autoX = window.innerWidth / 2;
+    
+    triggerForecastFetch(33.5186, -86.8104, autoX, 150, controller.signal);
+
+    return () => controller.abort(); // Cleanup function
+  }, []);
+
+  // 3. The Click Handler (Fires on user interaction)
+  const handleMapClick = (lat: number, lng: number, x: number, y: number) => {
+    const popupWidth = 320;
+    const safeX = Math.max(10, Math.min(x - popupWidth / 2, window.innerWidth - popupWidth - 40));
+    const safeY = Math.max(10, y + 16);
+    
+    triggerForecastFetch(lat, lng, safeX, safeY);
   };
 
   // 3. Dragging Logic for the custom panel
