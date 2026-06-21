@@ -7,7 +7,7 @@ services:
       - forrad-net
 
   weather-proxy:
-    build: 
+    build:
       context: ./weather-proxy
     ports:
       - "5000:5000"
@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
     environment:
       # Matches the os.getenv() in your Python script perfectly
-      - REDIS_IP=redis-cache 
+      - REDIS_IP=redis-cache
       # No REDIS_PASSWORD needed since our internal Redis container doesn't enforce auth by default
     networks:
       - forrad-net
@@ -41,7 +41,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://weather-proxy:5000 
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     networks:
       - forrad-net
     depends_on:
