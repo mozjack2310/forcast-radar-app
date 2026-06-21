@@ -1,5 +1,5 @@
 # Start with a lightweight Python 3.12 environment
-FROM python:3.12-slim
+FROM registry.access.redhat.com/ubi9/python-312:latest
 
 # Set the working directory inside the container
 WORKDIR /app

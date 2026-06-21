@@ -1,5 +1,5 @@
 # Use the official Red Hat UBI 10 Python 3.12 image as the base
-FROM registry.access.redhat.com/ubi10/python-312:latest
+FROM registry.access.redhat.com/ubi9/python-312:latest
 
 
 # Set the working directory inside the container

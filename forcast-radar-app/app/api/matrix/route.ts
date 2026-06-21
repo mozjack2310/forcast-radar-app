@@ -6,11 +6,14 @@ export async function GET() {
   try {
     // 1. Fetch from your local Python API proxy
     // Replace 'YOUR_PROXY_IP:PORT' with the actual internal IP of your proxy
-    const response = await fetch("http://weather-proxy:5000/api/matrix", {
-      // Next.js caching: Only hit your Python proxy once every 5 minutes (300 seconds)
-      // This prevents the Matrix from accidentally DDoS'ing your local server
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/matrix`,
+      {
+        // Next.js caching: Only hit your Python proxy once every 5 minutes (300 seconds)
+        // This prevents the Matrix from accidentally DDoS'ing your local server
+        cache: "no-store",
+      },
+    );
 
     if (!response.ok) {
       throw new Error(`Python proxy responded with status: ${response.status}`);

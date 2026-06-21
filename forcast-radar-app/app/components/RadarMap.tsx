@@ -75,7 +75,7 @@ export default function RadarMap() {
     setLoading(true);
 
     // Hit your local Flask backend
-    fetch(`http://localhost:5000/api/forecast?lat=${lat}&lon=${lng}`)
+    fetch(`http://localhost:5001/api/forecast?lat=${lat}&lon=${lng}`)
       .then((res) => res.json())
       .then((data) => {
         setForecastData(data.data);
