@@ -4,7 +4,7 @@ export async function GET() {
   try {
     // The Next.js server is INSIDE the container network,
     // so it can resolve the proxy's internal Docker DNS name
-    const res = await fetch("http://weather-proxy:5000/api/alerts", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts`, {
       // Weather data changes constantly; tell Next.js not to cache this statically
       cache: "no-store",
     });

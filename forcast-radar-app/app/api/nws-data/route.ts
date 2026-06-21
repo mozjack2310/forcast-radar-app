@@ -4,10 +4,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const res = await fetch("http://weather-proxy:5000/nws-data", {
-
+    const res = await fetch("http://loacalhost:5000/nws-data", {
       cache: "no-store",
-      
     });
 
     if (!res.ok) throw new Error(`Proxy responded with status: ${res.status}`);
