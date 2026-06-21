@@ -47,6 +47,15 @@ services:
     depends_on:
       - weather-proxy
 
+  nomads-daemon:
+    build: ./nomads-backend
+    container_name: forrad-nomads-daemon
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    networks:
+      - forrad-net
+
 networks:
   forrad-net:
     driver: bridge

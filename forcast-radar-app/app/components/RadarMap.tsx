@@ -55,21 +55,30 @@ export default function RadarMap() {
     startY: number;
   } | null>(null);
 
-useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
+  // 1. CRITICAL FIX: The SSR Hydration (This turns the map on!)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-   // 1. The Single Source of Truth for fetching data
-  const triggerForecastFetch = (lat: number, lng: number, x: number, y: number, signal?: AbortSignal) => {
+  // 2. The Single Source of Truth
+  const triggerForecastFetch = (
+    lat: number,
+    lng: number,
+    x: number,
+    y: number,
+    signal?: AbortSignal,
+  ) => {
     setPosition({ x, y, lat, lng });
     setLoading(true);
 
     // Dynamic endpoint routing for Production vs WSL
-    const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+    const baseApiUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
     fetch(`${baseApiUrl}/api/forecast?lat=${lat}&lon=${lng}`, { signal })
       .then((res) => {
-        if (!res.ok) throw new Error(`API returned bad status code: ${res.status}`);
+        if (!res.ok)
+          throw new Error(`API returned bad status code: ${res.status}`);
         return res.json();
       })
       .then((data) => {
@@ -77,28 +86,31 @@ useEffect(() => {
         setLoading(false);
       })
       .catch((err) => {
-        if (err.name === 'AbortError') return; // Ignore React unmount aborts
+        if (err.name === "AbortError") return;
         console.error("Failed to fetch forecast:", err);
         setLoading(false);
       });
   };
 
-  // 2. The Auto-Load (Fires once on startup)
+  // 3. The Auto-Load (Fires once on startup)
   useEffect(() => {
     const controller = new AbortController();
     const autoX = window.innerWidth / 2;
-    
+
     triggerForecastFetch(33.5186, -86.8104, autoX, 150, controller.signal);
 
-    return () => controller.abort(); // Cleanup function
+    return () => controller.abort();
   }, []);
 
   // 3. The Click Handler (Fires on user interaction)
   const handleMapClick = (lat: number, lng: number, x: number, y: number) => {
     const popupWidth = 320;
-    const safeX = Math.max(10, Math.min(x - popupWidth / 2, window.innerWidth - popupWidth - 40));
+    const safeX = Math.max(
+      10,
+      Math.min(x - popupWidth / 2, window.innerWidth - popupWidth - 40),
+    );
     const safeY = Math.max(10, y + 16);
-    
+
     triggerForecastFetch(lat, lng, safeX, safeY);
   };
 
@@ -222,7 +234,7 @@ useEffect(() => {
               </span>
               <button
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
-                onClick={(e) => {
+                onPointerDown={(e) => {
                   e.stopPropagation();
                   setPosition(null);
                 }}
