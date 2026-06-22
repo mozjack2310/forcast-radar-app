@@ -2,6 +2,7 @@
 
 import { NWSObservationResponse, OpenMeteoCurrentResponse } from "@/lib/types";
 import { useUnits } from "../context/UnitContext";
+import Image from "next/image";
 
 interface Props {
   nws: NWSObservationResponse["properties"];
@@ -179,12 +180,16 @@ export default function CurrentConditionsCard({ nws, meteo }: Props) {
             {tempUnit}
           </span>
           <div className="w-[20%] min-w-[48px] max-w-[96px] shrink-0">
-            <img
+            <Image
               src={nws.icon}
               className={
-                "w-16 h-16 rounded-xl object-contain flex-shrink-0 border-2 ${theme.border} bg-slate-800 dark:bg-white/10 p-1 shadow-sm"
+                "rounded-xl object-contain flex-shrink-0 border-2 ${theme.border} bg-slate-800 dark:bg-white/10 p-1 shadow-sm"
               }
-              alt="Current Weather"
+              alt="Weather Icon"
+              width={64}
+              height={64}
+              unoptimized={true} // This forces the browser to fetch it directly, bypassing the NWS server block!
+              priority={true} // Ensure this image loads ASAP for better perceived performance
             />{" "}
           </div>
         </div>
