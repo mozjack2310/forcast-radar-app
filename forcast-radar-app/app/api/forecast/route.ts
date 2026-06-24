@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
     // Dynamically pull the NOMADS Daemon URL from .env
     const baseUrl = process.env.INTERNAL_NOMADS_DAEMON_URL;
-    const targetUrl = `${baseUrl}/api/matrix;`;
+    const targetUrl = `${baseUrl}/api/forecast?lat=${lat}&lon=${lon}`; // or /api/matrix
 
     const res = await fetch(targetUrl, { cache: "no-store" });
 
@@ -19,10 +19,7 @@ export async function GET(request: Request) {
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Matrix Bridge Error:", error);
-    return NextResponse.json({
-      error: "Failed to load Matrix Data",
-      status: 500,
-    });
+    console.error("Forecast Bridge Error:", error);
+    return NextResponse.json({ error: "Failed to load forecast", status: 500 });
   }
 }

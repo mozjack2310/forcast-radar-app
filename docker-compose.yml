@@ -40,12 +40,22 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000
+    env_file:
+      - .env
     networks:
       - forrad-net
     depends_on:
       - weather-proxy
+      - nomads-daemon
+
+  nomads-daemon:
+    build: ./nomads-backend
+    container_name: forrad-nomads-daemon
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    networks:
+      - forrad-net
 
 networks:
   forrad-net:

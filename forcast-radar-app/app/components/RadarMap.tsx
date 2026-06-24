@@ -71,11 +71,7 @@ export default function RadarMap() {
     setPosition({ x, y, lat, lng });
     setLoading(true);
 
-    // Dynamic endpoint routing for Production vs WSL
-    const baseApiUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
-
-    fetch(`${baseApiUrl}/api/forecast?lat=${lat}&lon=${lng}`, { signal })
+    fetch(`/api/forecast?lat=${lat}&lon=${lng}`, { signal })
       .then((res) => {
         if (!res.ok)
           throw new Error(`API returned bad status code: ${res.status}`);
