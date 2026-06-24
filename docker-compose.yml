@@ -40,27 +40,13 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
-<<<<<<< HEAD
-    environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-=======
     env_file:
       - .env
->>>>>>> wsl-local-testing
     networks:
       - forrad-net
     depends_on:
       - weather-proxy
       - nomads-daemon
-
-  nomads-daemon:
-    build: ./nomads-backend
-    container_name: forrad-nomads-daemon
-    restart: unless-stopped
-    ports:
-      - "5001:5001"
-    networks:
-      - forrad-net
 
   nomads-daemon:
     build: ./nomads-backend
