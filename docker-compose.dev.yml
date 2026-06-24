@@ -41,7 +41,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
     network_mode: host
     depends_on:
       - weather-proxy
