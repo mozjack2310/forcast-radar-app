@@ -2,16 +2,18 @@ import React from "react";
 import UnitToggle from "./components/UnitToggle";
 import ForecastCard from "./components/ForecastCard";
 import MapWrapper from "./components/MapWrapper";
-import AlertBanner from "./components/AlertBanner";
 import CurrentConditionsCard from "./components/CurrentConditionsCard";
 import DebugConsole from "./components/DebugConsole";
+import AlertSidebar from "./components/AlertSidebar";
+import DebugAlertButton from "./components/DebugAlertButton";
+import AlertToast from "./components/AlertToast";
 import {
   NWSForecastPeriod,
   NWSObservationResponse,
   OpenMeteoCurrentResponse,
 } from "@/lib/types";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // We define the latitude and longitude for Birmingham, AL, which will be used to fetch both the forecast and the radar data. The station ID is also set for fetching current conditions from the NWS API.
 const LAT = 33.5186;
@@ -24,26 +26,33 @@ async function getWeatherData() {
     const headers = { "User-Agent": "(forcast-radar-app, bjgarner@uab.edu)" };
 
     // 1. Get Grid Points (Cached for 24 hours)
-    const pointRes = await fetch(`https://api.weather.gov/points/${LAT},${LON}`, {
-      headers,
-      next: { revalidate: 86400 } 
-    });
+    const pointRes = await fetch(
+      `https://api.weather.gov/points/${LAT},${LON}`,
+      {
+        headers,
+        next: { revalidate: 86400 },
+      },
+    );
     if (!pointRes.ok) throw new Error(`Gridpoint Error: ${pointRes.status}`);
     const pointData = await pointRes.json();
 
     // 2. Get 7-Day Forecast (Cached for 1 hour)
     const forecastRes = await fetch(pointData.properties.forecast, {
       headers,
-      next: { revalidate: 3600 } 
+      next: { revalidate: 3600 },
     });
-    if (!forecastRes.ok) throw new Error(`Forecast Error: ${forecastRes.status}`);
+    if (!forecastRes.ok)
+      throw new Error(`Forecast Error: ${forecastRes.status}`);
     const forecastData = await forecastRes.json();
 
     // 3. Get Current Observations (Cached for 5 mins)
-    const obsRes = await fetch(`https://api.weather.gov/stations/${STATION_ID}/observations/latest`, {
-      headers,
-      next: { revalidate: 300 } 
-    });
+    const obsRes = await fetch(
+      `https://api.weather.gov/stations/${STATION_ID}/observations/latest`,
+      {
+        headers,
+        next: { revalidate: 300 },
+      },
+    );
     if (!obsRes.ok) throw new Error(`Observation Error: ${obsRes.status}`);
     const obsData = await obsRes.json();
 
@@ -52,9 +61,9 @@ async function getWeatherData() {
     try {
       const meteoRes = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,cloud_cover,precipitation,wind_speed_10m,wind_direction_10m,uv_index,apparent_temperature,is_day,surface_pressure&temperature_unit=fahrenheit&wind_speed_unit=mph`,
-      { next: { revalidate: 300 } }
-    );
-      
+        { next: { revalidate: 300 } },
+      );
+
       if (meteoRes.ok) {
         const meteoJson = await meteoRes.json();
         currentMeteoData = meteoJson.current;
@@ -66,16 +75,14 @@ async function getWeatherData() {
     // Return the exact raw JSON shape your React components demand
     return {
       forecast: forecastData.properties.periods,
-      currentNWS: obsData.properties, 
-      currentMeteo: currentMeteoData // <-- Secondary sensor online!
+      currentNWS: obsData.properties,
+      currentMeteo: currentMeteoData, // <-- Secondary sensor online!
     };
-
   } catch (error) {
     console.error("NWS Web Fetch Failed:", error);
     return { forecast: null, currentNWS: null, currentMeteo: null };
   }
 }
-
 
 export default async function Home() {
   // 1. Await the data without destructuring it yet
@@ -88,8 +95,6 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-[#000000] p-8 max-w-7xl mx-auto relative">
-      {/* 1. The Springboard Toast Notification */}
-      <AlertBanner />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
         {/* The Main Gradient Title */}
@@ -108,14 +113,12 @@ export default async function Home() {
         {/* Drop the visual toggle right here! */}
         <UnitToggle />
       </div>
-
       {/* 2. The Conditional Layout Swap */}
-
       <div className="flex flex-col gap-8">
         {/* --- 1. Current Conditions Failsafe --- */}
         <div>
           {currentNWS && currentMeteo ? (
-            <CurrentConditionsCard nws={currentNWS} meteo={currentMeteo} />
+            <CurrentConditionsCard />
           ) : (
             // The Offline UI State
             <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-700 rounded-xl bg-gray-900/50">
@@ -134,9 +137,7 @@ export default async function Home() {
           <MapWrapper />
         </div>
       </div>
-
       {/* The Forecast Cards Grid */}
-
       {/* --- 2. The 7-Day Forecast Failsafe --- */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 w-full">
         {forecast ? (
@@ -155,6 +156,12 @@ export default async function Home() {
       </div>
       {/* 3. The Debug Console */}
       <DebugConsole data={{ currentMeteo, currentNWS, forecast }} />
+      {/* 4. The Alert Sidebar */}
+      <AlertSidebar />
+      {/* 5. The Debug Alert Button */}
+      <DebugAlertButton />
+      {/* 6. The Alert Toast */}
+      <AlertToast />
     </main>
   );
 }

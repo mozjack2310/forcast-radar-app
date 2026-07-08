@@ -3,8 +3,10 @@ services:
     image: docker.io/library/redis:7.4-alpine
     container_name: forrad-redis
     restart: unless-stopped
+    ports:
+      - "6379:6379"
     networks:
-      - forrad-net
+      - forrad-net-v2
 
   weather-proxy:
     build:
@@ -14,10 +16,12 @@ services:
     container_name: forrad-weather-proxy
     restart: always
     environment:
-      - REDIS_HOST=redis-cache
+      - REDIS_IP=redis-cache
       - REDIS_PORT=6379
+    env_file:
+      - .env
     networks:
-      - forrad-net
+      - forrad-net-v2
     depends_on:
       - redis-cache
 
@@ -30,7 +34,7 @@ services:
       - REDIS_IP=redis-cache
       # No REDIS_PASSWORD needed since our internal Redis container doesn't enforce auth by default
     networks:
-      - forrad-net
+      - forrad-net-v2
     depends_on:
       - redis-cache
 
@@ -43,7 +47,7 @@ services:
     env_file:
       - .env
     networks:
-      - forrad-net
+      - forrad-net-v2
     depends_on:
       - weather-proxy
       - nomads-daemon
@@ -55,8 +59,8 @@ services:
     ports:
       - "5001:5001"
     networks:
-      - forrad-net
+      - forrad-net-v2
 
 networks:
-  forrad-net:
+  forrad-net-v2:
     driver: bridge

@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const lon = searchParams.get("lon");
 
     // Dynamically pull the NOMADS Daemon URL from .env
-    const baseUrl = process.env.INTERNAL_NOMADS_DAEMON_URL;
+    const baseUrl = process.env.INTERNAL_WEATHER_PROXY_URL;
     const targetUrl = `${baseUrl}/api/matrix;`;
 
     const res = await fetch(targetUrl, { cache: "no-store" });
