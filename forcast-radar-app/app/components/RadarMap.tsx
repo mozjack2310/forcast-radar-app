@@ -27,6 +27,8 @@ import {
 } from "recharts";
 
 import { useWeatherStore, WeatherAlert } from "../../store/useWeatherStore";
+import FloatingAlertDetails from "./FloatingAlertDetails";
+import MapLegend from "./MapLegend";
 
 // ... your imports end on line 29 ...
 
@@ -368,7 +370,7 @@ export default function RadarMap() {
         <MapInteractionHandler onMapClick={handleMapClick} />
         <MapAlertController />
 
-        {/* Render Alert Polygons */}
+        {/* Render ALL Alert Polygons (It automatically highlights the selected one internally!) */}
         <AllAlertPolygonLayer />
 
         <TileLayer
@@ -377,6 +379,16 @@ export default function RadarMap() {
           attribution="&copy; Esri, DeLorme"
         />
       </MapContainer>
+
+      {/* ========================================================
+          FLOATING OVERLAYS (Rendered safely outside Leaflet DOM)
+         ======================================================== */}
+
+      {/* Floating Alerts Details */}
+      {selectedAlert && <FloatingAlertDetails />}
+
+      {/* Map Legend Overlay */}
+      <MapLegend />
 
       {/* Floating Draggable Forecast Panel */}
       {position && (

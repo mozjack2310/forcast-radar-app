@@ -157,7 +157,7 @@ export default function CurrentConditionsCard() {
                 src={telemetry.icon_url}
                 alt={telemetry.condition_text || "Weather Conditions"}
                 title={telemetry.condition_text || "Weather Conditions"}
-                className="w-full h-full object-contain scale-150 drop-shadow-md cursor-help"
+                className="w-full h-full object-contain scale-150 drop-shadow-md cursor-pointer"
                 loading="lazy"
                 style={{
                   filter: "drop-shadow(0 0 2px rgba(0, 196, 245, 0.7))",

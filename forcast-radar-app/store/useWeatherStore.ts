@@ -27,6 +27,9 @@ interface WeatherState {
   // Add these two new lines!
   activeAlerts: any[];
   setActiveAlerts: (alerts: any[]) => void;
+
+  isSidebarOpen: boolean;
+  setSidebarOpen: (isOpen: boolean) => void;
 }
 
 export const useWeatherStore = create<WeatherState>((set) => ({
@@ -41,4 +44,7 @@ export const useWeatherStore = create<WeatherState>((set) => ({
 
   activeAlerts: [],
   setActiveAlerts: (alerts: any[]) => set({ activeAlerts: alerts }),
+
+  isSidebarOpen: false,
+  setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
 }));

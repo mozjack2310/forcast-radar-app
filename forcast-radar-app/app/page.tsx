@@ -156,10 +156,13 @@ export default async function Home() {
       </div>
       {/* 3. The Debug Console */}
       <DebugConsole data={{ currentMeteo, currentNWS, forecast }} />
+
       {/* 4. The Alert Sidebar */}
       <AlertSidebar />
+
       {/* 5. The Debug Alert Button */}
       <DebugAlertButton />
+
       {/* 6. The Alert Toast */}
       <AlertToast />
     </main>
