@@ -30,6 +30,9 @@ interface WeatherState {
 
   isSidebarOpen: boolean;
   setSidebarOpen: (isOpen: boolean) => void;
+
+  isDebuggerOpen: boolean;
+  toggleDebugger: () => void;
 }
 
 export const useWeatherStore = create<WeatherState>((set) => ({
@@ -47,4 +50,8 @@ export const useWeatherStore = create<WeatherState>((set) => ({
 
   isSidebarOpen: false,
   setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
+
+  isDebuggerOpen: false,
+  toggleDebugger: () =>
+    set((state) => ({ isDebuggerOpen: !state.isDebuggerOpen })),
 }));

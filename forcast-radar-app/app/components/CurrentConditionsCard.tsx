@@ -121,6 +121,7 @@ export default function CurrentConditionsCard() {
       : "--";
 
   const pressureLabel = isImp ? "inHg" : "hPa";
+  const displayHumidity = telemetry ? Math.round(telemetry.humidity) : 0;
 
   // Dewpoint Math
   const tempC = telemetry ? (telemetry.temperature - 32) * (5 / 9) : 0;
@@ -216,7 +217,7 @@ export default function CurrentConditionsCard() {
             Humidity
           </div>
           <div className="text-lg font-bold text-slate-200">
-            {telemetry?.humidity}{" "}
+            {displayHumidity}{" "}
             <span className="text-sm text-slate-500 font-normal">%</span>
           </div>
           <div className="text-xs text-slate-400 mt-1">

@@ -79,7 +79,12 @@ export default function FloatingAlertDetails() {
         </h3>
         {/* Close Button clears the Zustand state, unmounting the component */}
         <button
-          onClick={() => setSelectedAlert(null)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedAlert(null);
+            // setSidebarOpen(false);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
           className="text-white hover:bg-white/20 rounded-full p-1 transition-colors pointer-events-auto"
         >
           <svg

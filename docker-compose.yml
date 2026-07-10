@@ -1,56 +1,63 @@
+version: "3.8"
+
 services:
   redis-cache:
-    image: docker.io/library/redis:7.4-alpine
-    container_name: forrad-redis
-    restart: unless-stopped
+    image: redis:7.4-alpine
+    container_name: forrad_redis
     ports:
       - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - forrad-net-v2
+
+  forrad-alerts:
+    build:
+      context: ./forrad-alerts
+    container_name: forrad_alerts_api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis-cache:6379
+      - REDIS_HOST=redis-cache
+    depends_on:
+      - redis-cache
+    restart: unless-stopped
     networks:
       - forrad-net-v2
 
   weather-proxy:
     build:
       context: ./weather-proxy
+    container_name: forrad_weather_proxy
     ports:
       - "5000:5000"
-    container_name: forrad-weather-proxy
-    restart: always
     environment:
       - REDIS_IP=redis-cache
       - REDIS_PORT=6379
-    env_file:
-      - .env
-    networks:
-      - forrad-net-v2
     depends_on:
       - redis-cache
-
-  forrad-alerts:
-    build: ./forrad-alerts
-    container_name: forrad-alerts-daemon
     restart: unless-stopped
-    environment:
-      # Matches the os.getenv() in your Python script perfectly
-      - REDIS_IP=redis-cache
-      # No REDIS_PASSWORD needed since our internal Redis container doesn't enforce auth by default
     networks:
       - forrad-net-v2
-    depends_on:
-      - redis-cache
 
   forcast-radar-app:
-    build: ./forcast-radar-app
-    container_name: forrad-nextjs-gateway
-    restart: unless-stopped
+    build:
+      context: ./forcast-radar-app
+    container_name: forrad_nextjs_gateway
     ports:
       - "3000:3000"
-    env_file:
-      - .env
+    environment:
+      # Client-side (Browser routing across your local network)
+      - NEXT_PUBLIC_API_URL=http://192.168.50.101:8000
+
+      # Server-side (Internal Docker DNS routing)
+      - INTERNAL_WEATHER_PROXY_URL=http://weather-proxy:5000
+    depends_on:
+      - forrad-alerts
+      - weather-proxy
+    restart: unless-stopped
     networks:
       - forrad-net-v2
-    depends_on:
-      - weather-proxy
-      - nomads-daemon
 
   nomads-daemon:
     build: ./nomads-backend

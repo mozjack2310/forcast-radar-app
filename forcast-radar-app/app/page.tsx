@@ -7,6 +7,7 @@ import DebugConsole from "./components/DebugConsole";
 import AlertSidebar from "./components/AlertSidebar";
 import DebugAlertButton from "./components/DebugAlertButton";
 import AlertToast from "./components/AlertToast";
+import DebuggerDrawer from "./components/DebuggerDrawer";
 import {
   NWSForecastPeriod,
   NWSObservationResponse,
@@ -154,8 +155,11 @@ export default async function Home() {
           </div>
         )}
       </div>
-      {/* 3. The Debug Console */}
-      <DebugConsole data={{ currentMeteo, currentNWS, forecast }} />
+      {/* The Debugger Drawer */}
+      <DebuggerDrawer>
+        {/* 3. The Debug Console */}
+        <DebugConsole data={{ currentMeteo, currentNWS, forecast }} />
+      </DebuggerDrawer>
 
       {/* 4. The Alert Sidebar */}
       <AlertSidebar />

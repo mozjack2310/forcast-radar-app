@@ -48,8 +48,13 @@ export default function MapLegend() {
             </h4>
             <div className="flex flex-col gap-1">
               {/* dBZ Color Gradient Bar */}
-              <div className="w-full h-2.5 rounded-sm bg-gradient-to-r from-green-500 via-yellow-400 via-red-500 to-purple-600 shadow-inner"></div>
-
+              <div
+                className="w-full h-2.5 rounded-sm shadow-inner"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, #22c55e, #facc15, #ef4444, #9333ea)",
+                }}
+              ></div>
               {/* dBZ Scale Labels */}
               <div className="flex justify-between text-[9px] font-mono font-bold text-slate-400 px-0.5 mt-0.5">
                 <span>Light</span>

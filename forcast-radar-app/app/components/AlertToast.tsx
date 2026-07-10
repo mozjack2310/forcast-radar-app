@@ -17,6 +17,7 @@ export interface ForRadAlert {
 
 export default function AlertToast() {
   const [alerts, setAlerts] = useState<ForRadAlert[]>([]);
+  const setSidebarOpen = useWeatherStore((state: any) => state.setSidebarOpen);
   const [activeFilter, setActiveFilter] = useState<
     "All" | "Warnings" | "Statements"
   >("All");
@@ -81,7 +82,7 @@ export default function AlertToast() {
   });
 
   return (
-    <div className="hidden xl:flex fixed top-24 right-6 z-[1500] flex-col gap-3 max-h-[85vh] overflow-y-auto pl-4 pb-4 pr-2 pointer-events-auto overflow-x-hidden">
+    <div className="fixed top-24 right-6 z-[1500] flex-col gap-3 max-h-[85vh] overflow-y-auto pl-4 pb-4 pr-2 overflow-x-hidden">
       {/* 1. Sticky Filter Chips Header */}
       {/* (Added shrink-0 so a huge list of alerts doesn't accidentally squish the buttons) */}
       <div className="sticky top-0 z-10 flex gap-2 p-1 bg-slate-900/80 backdrop-blur-md rounded-lg border border-slate-700/50 shadow-sm shrink-0">
@@ -126,14 +127,17 @@ export default function AlertToast() {
         return (
           <div
             key={alert.alert_id}
-            onClick={() => setSelectedAlert(alert)}
+            onClick={() => {
+              setSelectedAlert(alert);
+              setSidebarOpen(true);
+            }}
             className={`pointer-events-auto w-80 rounded-xl shadow-2xl border-l-4 cursor-pointer transform transition-all hover:scale-105 hover:-translate-x-2 overflow-hidden ${
               isSevere
                 ? "bg-slate-900 border-red-500"
                 : "bg-slate-900 border-orange-500"
             }`}
           >
-            {/* Colored Header Tab */}
+            {/* Smart Color Header Tab */}
             <div
               className={`px-4 py-1 text-[10px] font-black tracking-widest uppercase text-white ${isSevere ? "bg-red-600" : "bg-orange-500"}`}
             >
