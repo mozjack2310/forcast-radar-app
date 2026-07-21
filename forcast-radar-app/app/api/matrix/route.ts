@@ -3,47 +3,105 @@ import { checkRateLimit } from "@/lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
 
+// 1. The Smart Dictionary sits outside the GET function
+const condition_map: Record<string, string> = {
+  "Partly Cloudy": "P. Cldy",
+  "Chance Showers And Thunderstorms": "Chc TStorm",
+  "Mostly Cloudy": "M. Cldy",
+  "Rain and Snow": "Rain/Snw",
+  Thunderstorms: "T-Storms",
+  "Slight Chance": "Sl Chc",
+  "Areas Of": "",
+  "Partly Sunny": "P. Snny",
+  Light: "Lgt",
+  Chance: "Chc",
+  Slight: "Slgt",
+  Heavy: "Hvy",
+  Patchy: "Ptchy",
+  Showers: "Shwrs",
+  Drizzle: "Drzzl",
+  Flurries: "Flur",
+  Sunny: "Sun",
+  Clear: "Clr",
+  Breezy: "Brzy",
+  Freezing: "Frz",
+};
+
+function degreesToCompass(d: number): string {
+  const dirs = [
+    "N",
+    "NNE",
+    "NE",
+    "ENE",
+    "E",
+    "ESE",
+    "SE",
+    "SSE",
+    "S",
+    "SSW",
+    "SW",
+    "WSW",
+    "W",
+    "WNW",
+    "NW",
+    "NNW",
+  ];
+  const ix = Math.floor((d + 11.25) / 22.5) % 16;
+  return dirs[ix];
+}
+
 export async function GET(request: Request) {
   try {
     const ip = request.headers.get("x-forwarded-for") || "anonymous";
-    const rateLimit = await checkRateLimit(ip, 30, 60); // Allow 30 requests per minute
+    const rateLimit = await checkRateLimit(ip, 30, 60);
 
     if (!rateLimit.success) {
-      console.warn(`[Rate Limit Exceeded] IP: ${ip} on /api/matrix`);
+      console.warn(`[Rate Limit] IP: ${ip} on /api/matrix`);
       return NextResponse.json(
-        {
-          error: "Too many requests to matrix telemetry. Please wait a moment.",
-        },
+        { error: "Rate limit exceeded" },
         { status: 429 },
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const lat = searchParams.get("lat");
-    const lon = searchParams.get("lon");
-
-    // Dynamically pull the NOMADS Daemon URL from .env
+    // Connect to your Docker Python backend
     const baseUrl =
       process.env.INTERNAL_ALERTS_API_URL || "http://forrad_alerts_api:8000";
     const targetUrl = `${baseUrl}/api/v1/telemetry/current`;
 
     const res = await fetch(targetUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Daemon status: ${res.status}`);
 
-    if (!res.ok) throw new Error(`Daemon responded with status: ${res.status}`);
     const fullTelemetry = await res.json();
 
-    // 2. THE FUNNEL: Build a brutally lean, flat object for CircuitPython memory limits
+    // 2. Grab the raw text
+    let rawText = fullTelemetry.conditionText || "Unknown";
+
+    // 3. THIS is the TypeScript version of your shorten_forecast function!
+    for (const [longPhrase, shortPhrase] of Object.entries(condition_map)) {
+      rawText = rawText.replace(new RegExp(longPhrase, "gi"), shortPhrase);
+    }
+
+    // 4. NEW: Format the Wind String (e.g., "SSW 15 mph")
+    // Remember Pydantic converted these to camelCase for us!
+    const windSpeed = Math.round(fullTelemetry.windSpeed);
+    let windString = "Calm"; // Default fallback
+
+    if (windSpeed > 0 && fullTelemetry.windDirection !== undefined) {
+      const compassDir = degreesToCompass(fullTelemetry.windDirection);
+      windString = `${compassDir} ${windSpeed} mph`;
+    }
+
+    // 5. Build the tiny payload for the hardware
     const matrixPayload = {
-      t: Math.round((fullTelemetry.temperature * 9) / 5 + 32), // Just the integer/float
-      w: fullTelemetry.weatherCode, // To trigger specific LED icons
-      // Optional: Add a simple boolean flag if you want the matrix to flash red during severe weather!
-      // a: fullTelemetry.active_alerts > 0 ? 1 : 0
+      t: Math.round((fullTelemetry.temperature * 9) / 5 + 32),
+      c: rawText,
+      qc: 1,
+      wnd: windString, // <-- Add the wind string to the payload
     };
 
     return NextResponse.json(matrixPayload);
   } catch (error) {
     console.error("Matrix Bridge Error:", error);
-    // Keep the error payload tiny too!
     return NextResponse.json({ err: "Offline" }, { status: 500 });
   }
 }
