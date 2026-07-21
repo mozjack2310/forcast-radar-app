@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useWeatherStore } from "../../store/useWeatherStore";
+import { useWeatherStore } from "@/store/useWeatherStore";
 
 export default function AlertSidebar() {
   const selectedAlert = useWeatherStore((state: any) => state.selectedAlert);

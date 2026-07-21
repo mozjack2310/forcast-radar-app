@@ -1,24 +1,41 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+// Adjust this import path if your store is located elsewhere
 import { useWeatherStore } from "../../store/useWeatherStore";
 
+// We update the interface to allow either raw numbers (from a strict FastAPI Pydantic model)
+// OR objects with a 'value' property (from a raw NWS JSON pass-through)
+type MetricValue = number | { value: number | null } | null | undefined;
+
 export interface ForRadTelemetry {
-  timestamp: string;
-  temperature: number;
-  feels_like: number;
-  humidity: number;
-  pressure: number;
-  wind_speed: number;
-  wind_direction: number;
-  wind_gusts: number;
-  weather_code: number;
-  visibility: number;
-  uv_index: number;
-  source: string;
-  icon_url?: string;
-  condition_text?: string;
+  timestamp?: string;
+  temperature?: MetricValue;
+  feelsLike?: MetricValue; // Note: NWS usually calls this apparentTemperature
+  humidity?: MetricValue; // NWS uses relativeHumidity
+  pressure?: MetricValue; // NWS uses barometricPressure
+  windSpeed?: MetricValue;
+  windDirection?: MetricValue;
+  windGusts?: MetricValue;
+  visibility?: MetricValue;
+  source?: string;
+  icon?: string; // NWS uses 'icon' for the URL
+  textDescription?: string; // NWS uses 'textDescription'
 }
+
+// A robust helper function to extract the number whether it's nested or flat
+const extractValue = (dataPoint: MetricValue): number | null => {
+  if (dataPoint === null || dataPoint === undefined) return null;
+  if (typeof dataPoint === "number") return dataPoint;
+  if (
+    typeof dataPoint === "object" &&
+    dataPoint !== null &&
+    "value" in dataPoint
+  ) {
+    return typeof dataPoint.value === "number" ? dataPoint.value : null;
+  }
+  return null;
+};
 
 export default function CurrentConditionsCard() {
   const [telemetry, setTelemetry] = useState<ForRadTelemetry | null>(null);
@@ -32,12 +49,25 @@ export default function CurrentConditionsCard() {
   useEffect(() => {
     const fetchTelemetry = async () => {
       try {
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/v1/telemetry/current",
-        );
+        // SECURITY FIX: Call the Next.js Bouncer route (relative path),
+        // NOT the backend hardware directly.
+        // Make sure you have an app/api/telemetry/current/route.ts set up to proxy this!
+        const response = await fetch("/api/telemetry/current");
         if (!response.ok) throw new Error("Telemetry API unreachable");
+
         const data = await response.json();
-        setTelemetry(data);
+
+        // Handle deeply nested Redis payloads (e.g., if FastAPI passes the whole cache object)
+        let payload = data;
+        if (data.currentNWS) {
+          payload = data.currentNWS.properties
+            ? data.currentNWS.properties
+            : data.currentNWS;
+        } else if (data.properties) {
+          payload = data.properties;
+        }
+
+        setTelemetry(payload);
         setError(null);
       } catch (err: any) {
         console.error("Fetch failed:", err);
@@ -47,88 +77,86 @@ export default function CurrentConditionsCard() {
       }
     };
 
-    // Strict empty array ensures this only mounts once
     fetchTelemetry();
     const interval = setInterval(fetchTelemetry, 60000);
     return () => clearInterval(interval);
   }, []);
 
   // --- DYNAMIC MATH CONVERSIONS ---
-  // Safely handle missing NWS telemetry
-  // Safely extract the value first to keep the code clean
-  const tempValue = telemetry?.temperature;
 
-  // Bulletproof type checking
-  // 0. TEMPERATURE (Celsius to Fahrenheit)
+  // 0. TEMPERATURE (Raw: Celsius)
+  const rawTemp = extractValue(telemetry?.temperature);
   const displayTemp =
-    typeof tempValue === "number" && !isNaN(tempValue)
+    rawTemp !== null
       ? isImp
-        ? Math.round(tempValue)
-        : Math.round((tempValue - 32) * (5 / 9))
+        ? Math.round((rawTemp * 9) / 5 + 32)
+        : Math.round(rawTemp)
       : "--";
   const tempLabel = isImp ? "°F" : "°C";
 
-  // 1. FEELS LIKE (Celsius to Fahrenheit)
-  const feelslikeValue = telemetry?.feels_like;
-
+  // 1. FEELS LIKE (Raw: Celsius) - Fallback to normal temp if NWS doesn't provide it
+  const rawFeelsLike = extractValue(telemetry?.feelsLike) ?? rawTemp;
   const displayFeelsLike =
-    typeof feelslikeValue === "number" && !isNaN(feelslikeValue)
+    rawFeelsLike !== null
       ? isImp
-        ? Math.round(feelslikeValue)
-        : Math.round((feelslikeValue - 32) * (5 / 9))
+        ? Math.round((rawFeelsLike * 9) / 5 + 32)
+        : Math.round(rawFeelsLike)
       : "--";
 
-  // 2. WIND SPEED (km/h to mph)
-  const windspeedValue = telemetry?.wind_speed;
-
+  // 2. WIND SPEED (Raw: km/h)
+  const rawWind = extractValue(telemetry?.windSpeed);
   const displayWind =
-    typeof windspeedValue === "number" && !isNaN(windspeedValue)
+    rawWind !== null
       ? isImp
-        ? Math.round(windspeedValue)
-        : Math.round(windspeedValue * 1.60934)
+        ? Math.round(rawWind * 0.621371)
+        : Math.round(rawWind)
       : "--";
   const windLabel = isImp ? "mph" : "km/h";
 
-  // 3. WIND GUSTS (km/h to mph)
-  const windgustsValue = telemetry?.wind_gusts;
-
+  // 3. WIND GUSTS (Raw: km/h)
+  const rawGusts = extractValue(telemetry?.windGusts);
   const displayWindGusts =
-    typeof windgustsValue === "number" && !isNaN(windgustsValue)
+    rawGusts !== null
       ? isImp
-        ? Math.round(windgustsValue)
-        : Math.round(windgustsValue * 1.60934)
+        ? Math.round(rawGusts * 0.621371)
+        : Math.round(rawGusts)
       : "--";
 
-  // 4. VISIBILITY (Meters to Miles / Kilometers)
-  const visibilityValue = telemetry?.visibility;
+  // 4. VISIBILITY (Raw: Meters)
+  const rawVis = extractValue(telemetry?.visibility);
   const displayVisibility =
-    typeof visibilityValue === "number" && !isNaN(visibilityValue)
+    rawVis !== null
       ? isImp
-        ? visibilityValue.toFixed(1) // Imperial: Miles
-        : (visibilityValue * 1.60934).toFixed(1) // Metric: Kilometers
+        ? (rawVis / 1609.34).toFixed(1)
+        : (rawVis / 1000).toFixed(1)
       : "--";
-
   const visLabel = isImp ? "mi" : "km";
 
-  // 5. BAROMETRIC PRESSURE (Pascals to inHg / hPa)
-  // Double-check if your FastAPI schema names this 'pressure' or 'barometric_pressure'
-  const pressureValue = telemetry?.pressure;
+  // 5. BAROMETRIC PRESSURE (Raw: Pascals)
+  const rawPressure = extractValue(telemetry?.pressure);
   const displayPressure =
-    typeof pressureValue === "number" && !isNaN(pressureValue)
+    rawPressure !== null
       ? isImp
-        ? pressureValue.toFixed(2) // Imperial: e.g., 30.06 inHg
-        : (pressureValue * 33.8639).toFixed(1) // Metric: e.g., 1018.0 hPa
+        ? (rawPressure / 3386.39).toFixed(2)
+        : (rawPressure / 100).toFixed(1)
       : "--";
-
   const pressureLabel = isImp ? "inHg" : "hPa";
-  const displayHumidity = telemetry ? Math.round(telemetry.humidity) : 0;
 
-  // Dewpoint Math
-  const tempC = telemetry ? (telemetry.temperature - 32) * (5 / 9) : 0;
-  const dewpointC = telemetry ? tempC - (100 - telemetry.humidity) / 5 : 0;
-  const displayDewpoint = isImp
-    ? Math.round(dewpointC * (9 / 5) + 32)
-    : Math.round(dewpointC);
+  // 6. HUMIDITY (Raw: Percent)
+  const rawHumidity = extractValue(telemetry?.humidity);
+  const displayHumidity = rawHumidity !== null ? Math.round(rawHumidity) : "--";
+
+  // 7. DEWPOINT (Approximation if NWS doesn't provide it directly, but NWS usually does)
+  // We'll calculate it safely just in case using simple Magnus formula approximation
+  let displayDewpoint: string | number = "--";
+  if (rawTemp !== null && rawHumidity !== null) {
+    const dewC = rawTemp - (100 - rawHumidity) / 5;
+    displayDewpoint = isImp
+      ? Math.round((dewC * 9) / 5 + 32)
+      : Math.round(dewC);
+  }
+
+  // --- RENDERING ---
 
   if (loading) {
     return (
@@ -146,35 +174,30 @@ export default function CurrentConditionsCard() {
           <h2 className="text-lg font-bold">Current Conditions</h2>
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 mt-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            {telemetry?.source} LIVE
+            {telemetry?.source || "NWS LIVE"}
           </div>
         </div>
 
         {/* NWS Icon & Text Container */}
         <div className="flex flex-col items-center flex-shrink-0">
           <div className="w-14 h-14 bg-slate-800/80 rounded-xl border border-slate-700/50 flex items-center justify-center shadow-inner overflow-hidden">
-            {telemetry?.icon_url ? (
+            {telemetry?.icon ? (
               <img
-                src={telemetry.icon_url}
-                alt={telemetry.condition_text || "Weather Conditions"}
-                title={telemetry.condition_text || "Weather Conditions"}
+                src={telemetry.icon}
+                alt={telemetry?.textDescription || "Weather Conditions"}
+                title={telemetry?.textDescription || "Weather Conditions"}
                 className="w-full h-full object-contain scale-150 drop-shadow-md cursor-pointer"
                 loading="lazy"
-                style={{
-                  filter: "drop-shadow(0 0 2px rgba(0, 196, 245, 0.7))",
-                }}
               />
             ) : (
               <span className="text-2xl text-slate-500">☁️</span>
             )}
           </div>
-
-          {/* Constrained Condition Text */}
           <span
             className="text-[10px] font-bold text-slate-400 mt-1.5 uppercase tracking-wider text-center w-16 truncate"
-            title={telemetry?.condition_text}
+            title={telemetry?.textDescription}
           >
-            {telemetry?.condition_text || "---"}
+            {telemetry?.textDescription || "--"}
           </span>
         </div>
       </div>
@@ -217,11 +240,12 @@ export default function CurrentConditionsCard() {
             Humidity
           </div>
           <div className="text-lg font-bold text-slate-200">
-            {displayHumidity}{" "}
+            {displayHumidity}
             <span className="text-sm text-slate-500 font-normal">%</span>
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            Dewpoint ~{displayDewpoint}°
+            Dewpoint ~ {displayDewpoint}
+            {tempLabel}
           </div>
         </div>
 
@@ -231,8 +255,8 @@ export default function CurrentConditionsCard() {
             Pressure
           </div>
           <div className="text-lg font-bold text-slate-200">
-            {displayPressure}{" "}
-            <span className="text-sm text-slate-500 font-normal">
+            {displayPressure}
+            <span className="text-sm text-slate-500 font-normal ml-1">
               {pressureLabel}
             </span>
           </div>
@@ -244,13 +268,19 @@ export default function CurrentConditionsCard() {
             Visibility
           </div>
           <div className="text-lg font-bold text-slate-200">
-            {displayVisibility}{" "}
-            <span className="text-sm text-slate-500 font-normal">
+            {displayVisibility}
+            <span className="text-sm text-slate-500 font-normal ml-1">
               {visLabel}
             </span>
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="mt-4 text-xs text-red-400 bg-red-900/20 p-2 rounded border border-red-800/50">
+          Error mapping data: {error}
+        </div>
+      )}
     </div>
   );
 }

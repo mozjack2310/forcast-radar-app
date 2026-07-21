@@ -3,7 +3,8 @@ import json
 
 from app.models.telemetry_schemas import ForRadTelemetry
 from app.services.telemetry_fetcher import fetch_and_sanitize_telemetry
-import app.core.redis as core_redis
+# 1. Import the getter function instead of the whole core module
+from app.core.redis import get_redis_client 
 
 router = APIRouter()
 
@@ -15,9 +16,12 @@ async def get_current_telemetry():
     """
     cache_key = "forrad:telemetry:current"
     
+    # --- LATE BINDING: Grab the live connection right as the request hits! ---
+    redis_client = get_redis_client()
+    
     # 1. Try Cache First
-    if core_redis.redis_client:
-        cached_data = await core_redis.redis_client.get(cache_key)
+    if redis_client:
+        cached_data = await redis_client.get(cache_key)
         if cached_data:
             print("⚡ CACHE HIT: Serving telemetry from Redis.")
             return json.loads(cached_data)
@@ -33,9 +37,9 @@ async def get_current_telemetry():
         raise HTTPException(status_code=502, detail=str(e))
     
     # 3. Cache the Result (TTL: 5 minutes / 300 seconds)
-    if core_redis.redis_client:
+    if redis_client:
         telemetry_json = json.dumps(sanitized_telemetry.model_dump(mode='json'))
-        await core_redis.redis_client.setex(cache_key, 300, telemetry_json)
+        await redis_client.setex(cache_key, 300, telemetry_json)
         print("💾 CACHED: Saved live telemetry to Redis.")
     
     return sanitized_telemetry

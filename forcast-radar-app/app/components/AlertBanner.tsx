@@ -25,9 +25,7 @@ export default function AlertBanner() {
     const fetchAlerts = async () => {
       try {
         // Hitting our newly minted FastAPI backend!
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/v1/alerts/active",
-        );
+        const response = await fetch("api/alerts", { cache: "no-store" });
         if (!response.ok) {
           throw new Error("Failed to fetch alerts from backend");
         }

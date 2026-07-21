@@ -8,7 +8,7 @@ from app.models.nws_schemas import NWSFeatureCollection
 from app.models.forrad_schemas import ForRadAlert
 
 # Import our global Redis state
-import app.core.redis as core_redis
+from app.core.redis import get_redis_client
 
 router = APIRouter()
 
@@ -19,10 +19,13 @@ async def get_active_alerts():
     Checks Redis cache first. If empty, calls the NWS API.
     """
     cache_key = "forrad:alerts:active"
+
+    # --- LATE BINDING: Grab the live connection right as the request hits! ---
+    redis_client = get_redis_client()
     
     # 1. Try Cache First
-    if core_redis.redis_client:
-        cached_data = await core_redis.redis_client.get(cache_key)
+    if redis_client:
+        cached_data = await redis_client.get(cache_key)
         if cached_data:
             print("⚡ CACHE HIT: Serving alerts from Redis.")
             return json.loads(cached_data)
@@ -52,9 +55,9 @@ async def get_active_alerts():
     sanitized_alerts = [ForRadAlert.from_nws_feature(feature) for feature in raw_payload.features]
     
     # 4. Cache the Result
-    if core_redis.redis_client:
+    if redis_client:
         alerts_json = json.dumps([alert.model_dump(mode='json') for alert in sanitized_alerts])
-        await core_redis.redis_client.setex(cache_key, 120, alerts_json)
+        await redis_client.setex(cache_key, 120, alerts_json)
         print(f"💾 CACHED: Saved {len(sanitized_alerts)} live alerts to Redis.")
     
     return sanitized_alerts

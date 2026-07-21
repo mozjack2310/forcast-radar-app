@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 from typing import List, Dict, Any, Optional
 
 # ==========================================
@@ -10,6 +11,7 @@ class OpenMeteoCurrent(BaseModel):
     time: str
     temperature_2m: float
     relative_humidity_2m: int
+    dewpoint: Optional[float] = None
     apparent_temperature: float
     precipitation: float
     rain: float
@@ -42,15 +44,17 @@ class OpenMeteoResponse(BaseModel):
 # ==========================================
 
 class ForRadTelemetry(BaseModel):
+    model_config = ConfigDict(extra='ignore', alias_generator=to_camel, populate_by_name=True)
     """The lean, sanitized model sent to the Next.js UI and MatrixPortal."""
     timestamp: str
     temperature: float = Field(description="Actual temperature")
     feels_like: float = Field(description="Apparent temperature / Heat Index / Wind Chill")
-    humidity: int
-    pressure: float
-    wind_speed: float
-    wind_direction: int
-    wind_gusts: float
+    humidity: int = Field(description="Relative humidity percentage")
+    dewpoint: Optional[float] = Field(default=None, description="Dewpoint temperature")
+    pressure: float = Field(description="Pressure in inches of mercury (inHg)")
+    wind_speed: float = Field(description="Wind speed in mph")
+    wind_direction: int = Field(description="Wind direction in degrees")
+    wind_gusts: Optional[float] = Field(default=0.0, description="Wind gusts in mph")
     weather_code: int = Field(description="WMO Weather interpretation code (0-99)")
     visibility: float = Field(default=10.0, description="Visibility in miles") 
     uv_index: float = Field(default=0.0, description="UV Index (0-11+)")
@@ -75,6 +79,7 @@ class ForRadTelemetry(BaseModel):
             temperature=raw_data.current.temperature_2m,
             feels_like=raw_data.current.apparent_temperature,
             humidity=raw_data.current.relative_humidity_2m,
+            dewpoint=raw_data.current.dewpoint,
             pressure=raw_data.current.pressure_msl,
             wind_speed=raw_data.current.wind_speed_10m,
             wind_direction=raw_data.current.wind_direction_10m,

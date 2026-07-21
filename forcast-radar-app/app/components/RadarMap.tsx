@@ -159,9 +159,11 @@ function AllAlertPolygonLayer() {
 export default function RadarMap() {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [alerts, setAlerts] = useState<WeatherAlert[]>([]);
 
   // Zustand Global State
+  const setActiveAlerts = useWeatherStore(
+    (state: any) => state.setActiveAlerts,
+  ); // Make sure you have this setter in your store!
   const selectedAlert = useWeatherStore((state: any) => state.selectedAlert);
   const setSelectedAlert = useWeatherStore(
     (state: any) => state.setSelectedAlert,
@@ -192,10 +194,20 @@ export default function RadarMap() {
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/v1/alerts/active");
+        // SECURITY FIX: Point strictly to your Next.js API Bouncer
+        const res = await fetch("/api/alerts");
         if (res.ok) {
           const data = await res.json();
-          setAlerts(data);
+          // Extract the payload just like we did in CurrentConditions
+          const payload = data.features || data;
+
+          // DATA FIX: Push to the Global Store so AllAlertPolygonLayer can see it!
+          console.log("Fetched alerts for map overlay:", payload);
+          if (setActiveAlerts) {
+            setActiveAlerts(payload);
+          } else {
+            console.warn("setActiveAlerts is missing from useWeatherStore!");
+          }
         }
       } catch (err) {
         console.error("Failed to fetch alerts for map overlay:", err);
@@ -203,9 +215,9 @@ export default function RadarMap() {
     };
 
     fetchAlerts();
-    const interval = setInterval(fetchAlerts, 120000);
+    const interval = setInterval(fetchAlerts, 120000); // 2 minutes
     return () => clearInterval(interval);
-  }, []);
+  }, [setActiveAlerts]);
 
   // Point Forecast Logic
   const triggerForecastFetch = (

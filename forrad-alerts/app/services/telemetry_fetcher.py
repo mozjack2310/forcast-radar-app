@@ -25,9 +25,10 @@ async def _fetch_nws(client: httpx.AsyncClient, station_id: str) -> ForRadTeleme
     
     return ForRadTelemetry(
         timestamp=props.get("timestamp", "Unknown"),
-        temperature=round((temp_c * 9/5) + 32, 1),
-        feels_like=round((feels_c * 9/5) + 32, 1),
+        temperature=round(temp_c, 1),
+        feels_like=round(feels_c, 1),
         humidity=int(get_val("relativeHumidity", 0)),
+        dewpoint=int(get_val("dewpoint", 0)),
         pressure=round(get_val("barometricPressure") / 3386.39, 2),
         wind_speed=round(wind_kmh / 1.609, 1),
         wind_direction=int(get_val("windDirection", 0)),
@@ -48,7 +49,7 @@ async def _fetch_open_meteo(client: httpx.AsyncClient, lat: float, lon: float) -
         f"&current=temperature_2m,relative_humidity_2m,apparent_temperature,"
         f"precipitation,rain,showers,snowfall,weather_code,cloud_cover,visibility,uv_index"
         f"pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m"
-        f"&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch"
+        f"wind_speed_unit=mph&precipitation_unit=inch"
         f"&timezone=America%2FChicago"
     )
     # FAIL FAST: 3.0 second timeout

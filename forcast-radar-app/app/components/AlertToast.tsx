@@ -34,9 +34,7 @@ export default function AlertToast() {
 
     const fetchAlerts = async () => {
       try {
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/v1/alerts/active",
-        );
+        const response = await fetch("/api/alerts", { cache: "no-store" });
         if (response.ok) {
           const data = await response.json();
           setAlerts(data);

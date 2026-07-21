@@ -4,8 +4,8 @@ services:
   redis-cache:
     image: redis:7.4-alpine
     container_name: forrad_redis
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     restart: unless-stopped
     networks:
       - forrad-net-v2
@@ -14,8 +14,8 @@ services:
     build:
       context: ./forrad-alerts
     container_name: forrad_alerts_api
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - REDIS_URL=redis://redis-cache:6379
       - REDIS_HOST=redis-cache
@@ -29,8 +29,8 @@ services:
     build:
       context: ./weather-proxy
     container_name: forrad_weather_proxy
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     environment:
       - REDIS_IP=redis-cache
       - REDIS_PORT=6379
@@ -47,11 +47,23 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # Environment variables for the Next.js application
+      # Redis configuration
+      - REDIS_HOST=redis-cache
+      - REDIS_URL=redis://redis-cache:6379
+
       # Client-side (Browser routing across your local network)
-      - NEXT_PUBLIC_API_URL=http://192.168.50.101:8000
+      # - NEXT_PUBLIC_API_URL=http://192.168.50.101:8000
 
       # Server-side (Internal Docker DNS routing)
       - INTERNAL_WEATHER_PROXY_URL=http://weather-proxy:5000
+
+      # Nomads Daemon URL (Internal Docker DNS routing)
+      - INTERNAL_NOMADS_DAEMON_URL=http://nomads-daemon:5001
+
+      # Alerts API URL (Internal Docker DNS routing)
+      - INTERNAL_ALERTS_API_URL=http://forrad_alerts_api:8000
+
     depends_on:
       - forrad-alerts
       - weather-proxy
@@ -63,8 +75,8 @@ services:
     build: ./nomads-backend
     container_name: forrad-nomads-daemon
     restart: unless-stopped
-    ports:
-      - "5001:5001"
+    expose:
+      - "5001"
     networks:
       - forrad-net-v2
 
