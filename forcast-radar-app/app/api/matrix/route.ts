@@ -109,6 +109,7 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": "application/json",
         "Content-Length": byteLength,
+        Connection: "close", // Ensure the connection is closed after the response
       },
     });
   } catch (error) {
