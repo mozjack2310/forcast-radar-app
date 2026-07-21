@@ -96,10 +96,21 @@ export async function GET(request: Request) {
       t: Math.round((fullTelemetry.temperature * 9) / 5 + 32),
       c: rawText,
       qc: 1,
-      wnd: windString, // <-- Add the wind string to the payload
+      wnd: windString,
     };
 
-    return NextResponse.json(matrixPayload);
+    // FIX: Calculate exact byte length to prevent Next.js Chunked Encoding
+    // This stops the MatrixPortal ESP32 chip from crashing!
+    const jsonString = JSON.stringify(matrixPayload);
+    const byteLength = new TextEncoder().encode(jsonString).length.toString();
+
+    return new NextResponse(jsonString, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": byteLength,
+      },
+    });
   } catch (error) {
     console.error("Matrix Bridge Error:", error);
     return NextResponse.json({ err: "Offline" }, { status: 500 });
