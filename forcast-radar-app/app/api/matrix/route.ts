@@ -118,6 +118,14 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Matrix Bridge Error:", error);
-    return Response.json({ err: "Offline" }, { status: 500 });
+
+    // The final bare-metal conversion!
+    return new Response(JSON.stringify({ err: "Offline" }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        Connection: "close",
+      },
+    });
   }
 }
