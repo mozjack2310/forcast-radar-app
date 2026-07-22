@@ -1,5 +1,3 @@
-import { checkRateLimit } from "@/lib/rate-limiter";
-
 export const dynamic = "force-dynamic";
 export const runtime = "edge"; // This is will run the V8 runtime, not Node.js
 
@@ -52,22 +50,6 @@ function degreesToCompass(d: number): string {
 
 export async function GET(request: Request) {
   try {
-    const ip = request.headers.get("x-forwarded-for") || "anonymous";
-    const rateLimit = await checkRateLimit(ip, 30, 60);
-
-    if (!rateLimit.success) {
-      console.warn(`[Rate Limit] IP: ${ip} on /api/matrix`);
-
-      // Use the native Response object instead of NextResponse
-      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
-        status: 429,
-        headers: {
-          "Content-Type": "application/json",
-          Connection: "close",
-        },
-      });
-    }
-
     // Connect to your Docker Python backend
     const baseUrl =
       process.env.INTERNAL_ALERTS_API_URL || "http://forrad_alerts_api:8000";
