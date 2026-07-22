@@ -43,7 +43,8 @@ async def get_matrix_payload():
         # NOTE: Replace this dictionary with your actual internal telemetry fetch call!
         # Since this route is now INSIDE your alerts API, you can just call your 
         # internal function or database directly instead of doing an HTTP fetch.
-        telemetry = await get_current_telemetry() 
+        telemetry_model = await get_current_telemetry()  # <-- Call the internal function directly
+        telemetry = await telemetry_model.model_dump() 
         
         raw_text = telemetry.get("conditionText", "Unknown")
 
