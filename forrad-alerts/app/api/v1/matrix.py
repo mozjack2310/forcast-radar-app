@@ -56,7 +56,7 @@ async def get_matrix_payload():
         if not wind_speed_raw:
             wind_speed_raw = 0
             
-        wind_speed = round(float(wind_speed_raw), 0)
+        wind_speed = int(round(float(wind_speed_raw), 0))
         wind_string = "Calm"
 
         wind_dir = telemetry.get("wind_direction", telemetry.get("windDirection"))
