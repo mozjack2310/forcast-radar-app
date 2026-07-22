@@ -6,7 +6,7 @@ import redis.asyncio as aioredis
 
 # Import our modular components
 import app.core.redis as core_redis
-from app.api.v1 import alerts, telemetry # <-- ADD TELEMETRY HERE
+from app.api.v1 import alerts, telemetry, matrix # <-- ADD TELEMETRY AND MATRIX HERE
 
 redis_host = os.getenv("REDIS_HOST", "redis-cache")
 redis_port = int(os.getenv("REDIS_PORT", 6379))
@@ -62,6 +62,9 @@ app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
 
 # Attach the new telemetry router!
 app.include_router(telemetry.router, prefix="/api/v1/telemetry", tags=["Telemetry"])
+
+# Attach the new matrix router!
+app.include_router(matrix.router, prefix="/api/v1/matrix", tags=["Matrix"])
 
 # Temporary stubs for future implementation
 @app.get("/api/v1/radar/latest", tags=["Radar"])
