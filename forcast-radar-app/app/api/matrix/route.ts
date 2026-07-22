@@ -56,10 +56,15 @@ export async function GET(request: Request) {
 
     if (!rateLimit.success) {
       console.warn(`[Rate Limit] IP: ${ip} on /api/matrix`);
-      return NextResponse.json(
-        { error: "Rate limit exceeded" },
-        { status: 429 },
-      );
+
+      // Use the native Response object instead of NextResponse
+      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          Connection: "close",
+        },
+      });
     }
 
     // Connect to your Docker Python backend
@@ -113,6 +118,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Matrix Bridge Error:", error);
-    return NextResponse.json({ err: "Offline" }, { status: 500 });
+    return Response.json({ err: "Offline" }, { status: 500 });
   }
 }
