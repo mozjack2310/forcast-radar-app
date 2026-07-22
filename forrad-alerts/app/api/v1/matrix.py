@@ -113,7 +113,7 @@ async def get_matrix_payload():
 
         # 4. The Final Hybrid Payload (Defined ONLY ONCE!)
         payload = {
-            "t": telemetry.get("temperature", 0),  # Assuming it's already Fahrenheit
+            "t": round((telemetry.get("temperature", 0) * 9) / 5 + 32),  # Assuming it's already Fahrenheit
             "c": condition_string,                 # Uses our perfectly sliced abbreviation
             "qc": 1 if telemetry.get("is_cached") else 0, # Dynamic health check
             "wnd": wind_string,                    # Safe to use because it was defined above
