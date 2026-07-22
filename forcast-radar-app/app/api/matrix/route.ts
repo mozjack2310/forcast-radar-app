@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
@@ -104,7 +103,7 @@ export async function GET(request: Request) {
     const jsonString = JSON.stringify(matrixPayload);
     const byteLength = new TextEncoder().encode(jsonString).length.toString();
 
-    return new NextResponse(jsonString, {
+    return new Response(jsonString, {
       status: 200,
       headers: {
         "Content-Type": "application/json",
