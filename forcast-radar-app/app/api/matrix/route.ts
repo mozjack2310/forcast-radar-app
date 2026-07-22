@@ -1,6 +1,7 @@
 import { checkRateLimit } from "@/lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge"; // This is will run the V8 runtime, not Node.js
 
 // 1. The Smart Dictionary sits outside the GET function
 const condition_map: Record<string, string> = {
