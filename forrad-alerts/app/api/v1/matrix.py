@@ -37,13 +37,13 @@ def degrees_to_compass(d: float) -> str:
     return dirs[ix % 16]
 
 # 2. The Hardware Endpoint (Using @app or @router depending on your setup)
-@router.get("/api/v1/matrix", response_model=None) # Adjust decorator to match your FastAPI setup
+@router.get("", response_model=None) # Adjust decorator to match your FastAPI setup
 async def get_matrix_payload():
     try:
         # NOTE: Replace this dictionary with your actual internal telemetry fetch call!
         # Since this route is now INSIDE your alerts API, you can just call your 
         # internal function or database directly instead of doing an HTTP fetch.
-        telemetry = get_current_telemetry() 
+        telemetry = await get_current_telemetry() 
         
         raw_text = telemetry.get("conditionText", "Unknown")
 
