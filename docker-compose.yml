@@ -14,8 +14,8 @@ services:
     build:
       context: ./forrad-alerts
     container_name: forrad_alerts_api
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     environment:
       - REDIS_URL=redis://redis-cache:6379
       - REDIS_HOST=redis-cache
