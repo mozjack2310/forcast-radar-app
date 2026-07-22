@@ -40,24 +40,28 @@ def degrees_to_compass(d: float) -> str:
 @router.get("", response_model=None) # Adjust decorator to match your FastAPI setup
 async def get_matrix_payload():
     try:
-        # NOTE: Replace this dictionary with your actual internal telemetry fetch call!
-        # Since this route is now INSIDE your alerts API, you can just call your 
-        # internal function or database directly instead of doing an HTTP fetch.
-        telemetry_model = await get_current_telemetry()  # <-- Call the internal function directly
-        telemetry = telemetry_model.model_dump()
-        print(f"🟢 AVAILABLE KEYS: {telemetry.keys()}") 
+        # 1. Fetch the data (Could be a Dict, could be a Pydantic Model)
+        raw_data = await get_current_telemetry()
         
-        raw_text = telemetry.get("conditionText", "Unknown")
+        # 2. Safely normalize it to a dictionary!
+        if isinstance(raw_data, dict):
+            telemetry = raw_data           # It was a cache hit, already a dict!
+        else:
+            telemetry = raw_data.model_dump() # It was a cache miss, convert the object!
 
-        # Apply the dictionary via case-insensitive regex
-        for long_phrase, short_phrase in CONDITION_MAP.items():
-            raw_text = re.sub(long_phrase, short_phrase, raw_text, flags=re.IGNORECASE)
-
-        # Wind calculation
-        wind_speed = round(telemetry.get("windSpeed", 0))
+        # 3. Use the safe parsing we discussed to handle both snake_case and camelCase
+        raw_text = telemetry.get("condition_text", telemetry.get("conditionText", "Unknown"))
+        
+        wind_speed_raw = telemetry.get("wind_speed", telemetry.get("windSpeed", 0))
+        if not wind_speed_raw:
+            wind_speed_raw = 0
+            
+        wind_speed = round(float(wind_speed_raw), 0)
         wind_string = "Calm"
-        if wind_speed > 0 and telemetry.get("windDirection") is not None:
-            compass_dir = degrees_to_compass(telemetry.get("windDirection"))
+
+        wind_dir = telemetry.get("wind_direction", telemetry.get("windDirection"))
+        if wind_speed > 0 and wind_dir is not None:
+            compass_dir = degrees_to_compass(float(wind_dir))
             wind_string = f"{compass_dir} {wind_speed} mph"
 
         # Build the tiny payload
