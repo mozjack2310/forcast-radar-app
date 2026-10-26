@@ -112,6 +112,16 @@ class FakeAsyncRedis:
         self.ttls: Dict[str, Optional[int]] = {}
         self.published_messages: List[tuple[str, str]] = []
         self._pubsub = pubsub_instance or FakePubSub()
+        self.is_closed: bool = False
+
+    async def ping(self) -> bool:
+        return True
+
+    async def close(self) -> None:
+        self.is_closed = True
+
+    async def aclose(self) -> None:
+        self.is_closed = True
 
     async def get(self, key: str) -> Optional[bytes]:
         val = self.store.get(key)
@@ -264,11 +274,23 @@ def test_sse_alert_event_generator_yields_initial_update_keepalive_and_cleans_up
 
 
 def test_application_main_imports_cleanly() -> None:
-    """
-    Smoke test: Validates that app.main and all registered routers
-    import without missing modules or circular dependencies.
-    """
     import importlib
     main_module = importlib.import_module("app.main")
     assert main_module.app is not None
     assert len(main_module.app.routes) > 0
+
+
+def test_fastapi_lifespan_startup_and_shutdown(monkeypatch: Any) -> None:
+    async def _run() -> None:
+        import app.core.redis as core_redis
+        from app.main import app, lifespan
+
+        fake_redis = FakeAsyncRedis()
+        monkeypatch.setattr(core_redis, "get_redis_client", lambda: fake_redis)
+
+        async with lifespan(app):
+            assert app.state is not None
+
+        assert fake_redis.is_closed is True
+
+    asyncio.run(_run())

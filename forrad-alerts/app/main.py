@@ -47,7 +47,18 @@ async def _run_alerts_background_daemon() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    await core_redis.init_redis_client()
+    """
+    ASGI Lifespan Context Manager: Verifies Redis connectivity on boot,
+    starts the supervised background poller, and guarantees clean teardown.
+    """
+    client = core_redis.get_redis_client()
+    if client and hasattr(client, "ping"):
+        try:
+            await client.ping()
+            logger.info("[Redis] Startup connection verified.")
+        except Exception as exc:
+            logger.warning("[Redis] Initial ping failed (daemon will retry): %s", exc)
+
     poller_task = asyncio.create_task(_run_alerts_background_daemon())
 
     try:
@@ -59,10 +70,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except asyncio.CancelledError:
             logger.info("Alerts background daemon cancelled cleanly.")
 
-        client = core_redis.get_redis_client()
         if client:
-            await client.close()
-            logger.info("[Redis] Disconnected cleanly.")
+            try:
+                if hasattr(client, "aclose"):
+                    await client.aclose()
+                elif hasattr(client, "close"):
+                    await client.close()
+                logger.info("[Redis] Disconnected cleanly.")
+            except Exception as exc:
+                logger.warning("[Redis] Teardown exception: %s", exc)
 
 
 app = FastAPI(
@@ -91,7 +107,7 @@ async def healthz() -> dict[str, object]:
     redis_ok = False
     try:
         client = core_redis.get_redis_client()
-        if client:
+        if client and hasattr(client, "ping"):
             redis_ok = bool(await client.ping())
     except Exception:
         redis_ok = False
