@@ -261,3 +261,14 @@ def test_sse_alert_event_generator_yields_initial_update_keepalive_and_cleans_up
         assert fake_pubsub.subscribed_channels == []
 
     asyncio.run(_run())
+
+
+def test_application_main_imports_cleanly() -> None:
+    """
+    Smoke test: Validates that app.main and all registered routers
+    import without missing modules or circular dependencies.
+    """
+    import importlib
+    main_module = importlib.import_module("app.main")
+    assert main_module.app is not None
+    assert len(main_module.app.routes) > 0

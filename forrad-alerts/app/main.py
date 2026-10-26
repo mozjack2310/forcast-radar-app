@@ -5,7 +5,7 @@ from typing import AsyncGenerator, Final, List
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import alerts, forecast, matrix, telemetry
+from app.api.v1 import alerts, matrix, telemetry
 from app.core import redis as core_redis
 from app.services.nws_fetcher import sync_alerts_to_redis
 
@@ -84,7 +84,6 @@ app.add_middleware(
 app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
 app.include_router(telemetry.router, prefix="/api/v1/telemetry", tags=["Telemetry"])
 app.include_router(matrix.router, prefix="/api/v1/matrix", tags=["Matrix"])
-app.include_router(forecast.router, prefix="/api/v1/forecast", tags=["Forecast"])
 
 
 @app.get("/healthz", tags=["Health"])
