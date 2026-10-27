@@ -294,3 +294,19 @@ def test_fastapi_lifespan_startup_and_shutdown(monkeypatch: Any) -> None:
         assert fake_redis.is_closed is True
 
     asyncio.run(_run())
+
+
+def test_core_redis_singleton_lazy_initialization(monkeypatch: Any) -> None:
+    import app.core.redis as core_redis
+
+    monkeypatch.setattr(core_redis, "redis_client", None)
+    monkeypatch.setenv("REDIS_URL", "redis://redis-cache:6379")
+
+    client = core_redis.get_redis_client()
+    assert client is not None
+    assert hasattr(client, "get")
+    assert hasattr(client, "set")
+    assert hasattr(client, "publish")
+
+    # Reset global state after assertion
+    monkeypatch.setattr(core_redis, "redis_client", None)
