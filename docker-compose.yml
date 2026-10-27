@@ -1,62 +1,85 @@
+version: "3.8"
+
 services:
   redis-cache:
-    image: docker.io/library/redis:7.4-alpine
-    container_name: forrad-redis
+    image: redis:7.4-alpine
+    container_name: forrad_redis
+    expose:
+      - "6379"
     restart: unless-stopped
     networks:
-      - forrad-net
+      - forrad-net-v2
+
+  forrad-alerts:
+    build:
+      context: ./forrad-alerts
+    container_name: forrad_alerts_api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis-cache:6379
+      - REDIS_HOST=redis-cache
+    depends_on:
+      - redis-cache
+    restart: unless-stopped
+    networks:
+      - forrad-net-v2
 
   weather-proxy:
     build:
       context: ./weather-proxy
-    ports:
-      - "5000:5000"
-    container_name: forrad-weather-proxy
-    restart: always
+    container_name: forrad_weather_proxy
+    expose:
+      - "5000"
     environment:
-      - REDIS_HOST=redis-cache
-      - REDIS_PORT=6379
-    networks:
-      - forrad-net
-    depends_on:
-      - redis-cache
-
-  forrad-alerts:
-    build: ./forrad-alerts
-    container_name: forrad-alerts-daemon
-    restart: unless-stopped
-    environment:
-      # Matches the os.getenv() in your Python script perfectly
       - REDIS_IP=redis-cache
-      # No REDIS_PASSWORD needed since our internal Redis container doesn't enforce auth by default
-    networks:
-      - forrad-net
+      - REDIS_PORT=6379
     depends_on:
       - redis-cache
+    restart: unless-stopped
+    networks:
+      - forrad-net-v2
 
   forcast-radar-app:
-    build: ./forcast-radar-app
-    container_name: forrad-nextjs-gateway
-    restart: unless-stopped
+    build:
+      context: ./forcast-radar-app
+    container_name: forrad_nextjs_gateway
     ports:
       - "3000:3000"
-    env_file:
-      - .env
-    networks:
-      - forrad-net
+    environment:
+      # Environment variables for the Next.js application
+      # Redis configuration
+      - REDIS_HOST=redis-cache
+      - REDIS_URL=redis://redis-cache:6379
+
+      # Client-side (Browser routing across your local network)
+      # - NEXT_PUBLIC_API_URL=http://192.168.50.101:8000
+
+      # Server-side (Internal Docker DNS routing)
+      - INTERNAL_WEATHER_PROXY_URL=http://weather-proxy:5000
+
+      # Nomads Daemon URL (Internal Docker DNS routing)
+      - INTERNAL_NOMADS_DAEMON_URL=http://nomads-daemon:5001
+
+      # Alerts API URL (Internal Docker DNS routing)
+      - INTERNAL_ALERTS_API_URL=http://forrad_alerts_api:8000
+
     depends_on:
+      - forrad-alerts
       - weather-proxy
-      - nomads-daemon
+    restart: unless-stopped
+    networks:
+      - forrad-net-v2
 
   nomads-daemon:
     build: ./nomads-backend
     container_name: forrad-nomads-daemon
     restart: unless-stopped
-    ports:
-      - "5001:5001"
+    expose:
+      - "5001"
     networks:
-      - forrad-net
+      - forrad-net-v2
 
 networks:
-  forrad-net:
+  forrad-net-v2:
     driver: bridge
