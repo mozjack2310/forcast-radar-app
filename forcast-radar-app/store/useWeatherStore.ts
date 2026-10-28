@@ -1,39 +1,45 @@
 import { create } from "zustand";
+import { ForRadAlert } from "../lib/types";
 
-// Update these fields to match what your Python ForRadAlert model returns
-// Based on image_0e4f22.jpg (forrad_schemas.py)
-export interface WeatherAlert {
-  alert_id: string;
-  event_type: string;
-  severity_level: string;
-  urgency: string;
-  active_areas: string[];
-  start_time: string; // Pydantic datetime serializes to ISO 8601 string in JSON
-  end_time: string; // Pydantic datetime serializes to ISO 8601 string in JSON
-  has_polygon: boolean;
-  // Leaflet usually expects [lat, lng], the Python model has Optional[List[Any]]
-  polygon_coordinates?: any[] | null;
-}
-
-interface WeatherState {
-  // Unit State
+export interface WeatherState {
   unit: "imperial" | "metric";
   toggleUnit: () => void;
 
-  // Map Alert State
-  selectedAlert: WeatherAlert | null;
-  setSelectedAlert: (alert: WeatherAlert | null) => void;
+  selectedAlert: ForRadAlert | null;
+  setSelectedAlert: (alert: ForRadAlert | null) => void;
 
-  // Add these two new lines!
-  activeAlerts: any[];
-  setActiveAlerts: (alerts: any[]) => void;
+  activeAlerts: ForRadAlert[];
+  setActiveAlerts: (alerts: ForRadAlert[]) => void;
+  setAlerts: (alerts: ForRadAlert[]) => void;
+
+  isAlertStreamConnected: boolean;
+  setAlertStreamConnected: (connected: boolean) => void;
 
   isSidebarOpen: boolean;
   setSidebarOpen: (isOpen: boolean) => void;
 
+  isFloatOpen: boolean;
+  setFloatOpen: (isOpen: boolean) => void;
+
   isDebuggerOpen: boolean;
   toggleDebugger: () => void;
 }
+
+const reconcileSelectedAlert = (
+  currentSelected: ForRadAlert | null,
+  incomingAlerts: ForRadAlert[]
+): ForRadAlert | null => {
+  if (incomingAlerts.length === 0) {
+    return currentSelected;
+  }
+  if (!currentSelected) {
+    return incomingAlerts[0];
+  }
+  const exactMatch = incomingAlerts.find(
+    (a) => a.alert_id === currentSelected.alert_id
+  );
+  return exactMatch || incomingAlerts[0];
+};
 
 export const useWeatherStore = create<WeatherState>((set) => ({
   unit: "imperial",
@@ -46,10 +52,26 @@ export const useWeatherStore = create<WeatherState>((set) => ({
   setSelectedAlert: (alert) => set({ selectedAlert: alert }),
 
   activeAlerts: [],
-  setActiveAlerts: (alerts: any[]) => set({ activeAlerts: alerts }),
+  setActiveAlerts: (alerts) =>
+    set((state) => ({
+      activeAlerts: alerts,
+      selectedAlert: reconcileSelectedAlert(state.selectedAlert, alerts),
+    })),
+  setAlerts: (alerts) =>
+    set((state) => ({
+      activeAlerts: alerts,
+      selectedAlert: reconcileSelectedAlert(state.selectedAlert, alerts),
+    })),
+
+  isAlertStreamConnected: false,
+  setAlertStreamConnected: (connected) =>
+    set({ isAlertStreamConnected: connected }),
 
   isSidebarOpen: false,
-  setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
+  setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+
+  isFloatOpen: false,
+  setFloatOpen: (isOpen) => set({ isFloatOpen: isOpen }),
 
   isDebuggerOpen: false,
   toggleDebugger: () =>

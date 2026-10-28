@@ -1,0 +1,153 @@
+# ==============================================================================
+# ForRad V2: Enterprise Design & Architecture System Specification
+# Master Blueprint: Infrastructure, Topology, Schemas, and DOM Physics
+# ==============================================================================
+
+version: "2.0.0"
+metadata:
+  system_name: "ForRad (Forecast & Radar)"
+  architecture_pattern: "Decoupled Event-Driven Microservice Cluster"
+  environment: "Containerized Proxmox VE / RHEL 10 WSL2"
+
+infrastructure_and_topology:
+  hypervisor:
+    platform: "Proxmox VE"
+    interface_redundancy: "LACP Bond (802.3ad) - bond0"
+    transmit_hash_policy: "layer3+4"
+  host_os:
+    development: "Red Hat Enterprise Linux 10 (RHEL 10) via WSL2"
+    production: "RHEL 10 Headless VM"
+    container_engine: "Podman (Rootless with User Lingering)"
+  network_hardware:
+    router_firewall: "pfSense Core Firewall"
+    switches:
+      - "Cisco Catalyst Managed Switch"
+      - "Netgear GS108T L2 Switch"
+  vlan_microsegmentation:
+    vlan_30_iot:
+      subnet_type: "Untrusted IoT"
+      devices:
+        - "Adafruit MatrixPortal M4 LED Display"
+        - "Raspberry Pi Edge Nodes"
+      access_control: "Restricted outbound. Ingress permitted strictly to Services DMZ on TCP Port 8000."
+    vlan_40_services:
+      subnet_type: "Trusted DMZ"
+      devices:
+        - "RHEL 10 Docker Host (192.168.50.101)"
+      access_control: "Houses container bridge forrad-net."
+  firewall_acl_policy: "Default-Deny. Strict pfSense host aliases enforced."
+
+container_architecture:
+  docker_bridge_network: "forrad-net"
+  services:
+    edge_gateway:
+      name: "forrad-nextjs-gateway"
+      technology: "Next.js 14 (App Router / Standalone Output)"
+      internal_port: 3000
+      exposed_port: 3000
+      responsibility: "Client UI, Server-Side BFF API Bouncer, State Hydration"
+    api_proxy:
+      name: "forrad-alerts-daemon"
+      technology: "Python 3.12 / FastAPI / Uvicorn ASGI"
+      internal_port: 8000
+      exposed_port: 8000
+      responsibility: "Asynchronous polling, Schema Validation, Hardware REST endpoint"
+    state_cache:
+      name: "forrad-redis"
+      technology: "Redis 7.4-alpine"
+      internal_port: 6379
+      exposed_port: null
+      responsibility: "High-speed TTL telemetry cache and Pub/Sub message broker"
+    historical_db:
+      name: "forrad-timescale"
+      technology: "TimescaleDB / PostGIS (PostgreSQL 16)"
+      internal_port: 5432
+      exposed_port: null
+      responsibility: "Time-series archival and spatial GeoJSON polygon querying"
+
+data_lineage_and_schemas:
+  validation_engine: "Pydantic V2 / TypeScript Interface Contracts"
+  data_units: "Imperial server-side conversion (Fahrenheit, mph, hPa)"
+  schemas:
+    ForRadTelemetry:
+      purpose: "Current station observations (ASOS KBHM & Open-Meteo)"
+      fields:
+        timestamp: "ISO-8601 String"
+        temperature: "Float (Fahrenheit)"
+        feels_like: "Float (Fahrenheit)"
+        humidity: "Integer (Percentage)"
+        dewpoint: "Float (Fahrenheit) or Null"
+        pressure: "Float (Inches Hg or hPa)"
+        wind_speed: "Float (mph)"
+        wind_direction: "Integer (Degrees 0-360)"
+        wind_gusts: "Float (mph)"
+        weather_code: "Integer (WMO Code 0-99)"
+        visibility: "Float (Miles)"
+        uv_index: "Float (0.0 - 12.0)"
+        condition_text: "String (Human-readable summary)"
+        source: "String (NWS / Open-Meteo)"
+        station_id: "String (e.g., KBHM)"
+    ForRadAlert:
+      purpose: "NWS CAP active severe weather warnings and GIS geometry"
+      fields:
+        alert_id: "String (UUID)"
+        event_type: "String (e.g., Tornado Warning)"
+        severity_level: "Enum [Extreme, Severe, Moderate, Minor, Unknown]"
+        urgency: "String (Immediate / Expected)"
+        headline: "String or Null"
+        description: "String (Full NWS Bulletin text)"
+        instruction: "String or Null"
+        active_areas: "List of Strings (Counties / Zones)"
+        start_time: "ISO-8601 String"
+        end_time: "ISO-8601 String"
+        has_polygon: "Boolean"
+        polygon_coordinates: "List of Coordinate Pairs or Null"
+    ForRadForecastPeriod:
+      purpose: "7-day meteorological projection grids"
+      fields:
+        number: "Integer"
+        name: "String (e.g., This Afternoon)"
+        startTime: "ISO-8601 String"
+        endTime: "ISO-8601 String"
+        isDaytime: "Boolean"
+        temperature: "Integer"
+        temperatureUnit: "String (F)"
+        windSpeed: "String (e.g., 5 to 10 mph)"
+        windDirection: "String (e.g., SSE)"
+        shortForecast: "String"
+        detailedForecast: "String"
+
+ui_ux_component_standards:
+  state_management: "Zustand (useWeatherStore)"
+  spatial_z_index_registry:
+    z_map: 0
+    z_rail: 100
+    z_toast: 1500
+    z_hud: 2000
+    z_drawer: 3000
+    z_sidebar: 4000
+  threat_severity_color_mapping:
+    extreme:
+      hex: "#dc2626"
+      tailwind: "bg-red-600 text-red-500 border-red-500 animate-pulse"
+      threat_type: "Tornado Warning"
+    severe:
+      hex: "#facc15"
+      tailwind: "bg-yellow-400 text-yellow-400 border-yellow-400"
+      threat_type: "Severe Thunderstorm Warning"
+    moderate:
+      hex: "#14b8a6"
+      tailwind: "bg-teal-500 text-teal-500 border-teal-500"
+      threat_type: "Flash Flood Warning"
+    statement:
+      hex: "#f97316"
+      tailwind: "bg-orange-500 text-orange-500 border-orange-500"
+      threat_type: "Special Weather Statement"
+    advisory:
+      hex: "#94a3b8"
+      tailwind: "bg-slate-400 text-slate-400 border-slate-400"
+      threat_type: "Minor Weather Advisory"
+  dom_physics_standards:
+    pointer_events: "Use onPointerDown for universal touch/mouse tracking."
+    pointer_capture: "Use setPointerCapture to maintain drag lock."
+    event_propagation: "Mandatory e.stopPropagation() on floating elements to prevent Leaflet map pan bleed-through."

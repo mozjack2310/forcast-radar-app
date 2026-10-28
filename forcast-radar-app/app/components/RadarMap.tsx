@@ -26,7 +26,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-import { useWeatherStore, WeatherAlert } from "../../store/useWeatherStore";
+import { useWeatherStore } from "../../store/useWeatherStore";
 import FloatingAlertDetails from "./FloatingAlertDetails";
 import MapLegend from "./MapLegend";
 
