@@ -1,3 +1,31 @@
+
+def _nws_c_to_f(val):
+    if val is None:
+        return None
+    try:
+        return round((float(val) * 9.0 / 5.0) + 32.0, 1)
+    except (TypeError, ValueError):
+        return None
+
+def _nws_wind_to_mph(prop):
+    if not isinstance(prop, dict):
+        return 0.0
+    val = prop.get("value")
+    if val is None:
+        return 0.0
+    unit = str(prop.get("unitCode", "")).lower()
+    try:
+        v = float(val)
+        if "km_h" in unit or "km/h" in unit:
+            return round(v * 0.621371, 1)
+        if "m_s" in unit or "m/s" in unit:
+            return round(v * 2.23694, 1)
+        if "kn" in unit or "kt" in unit:
+            return round(v * 1.15078, 1)
+        return round(v, 1)
+    except (TypeError, ValueError):
+        return 0.0
+
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from typing import List, Dict, Any, Optional

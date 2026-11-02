@@ -1,3 +1,25 @@
-venv
+# Virtual Environments & Host Packages
+venv/
+.venv/
+env/
+*.egg-info/
+
+# Python Bytecode & Caches
 __pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git & Editor Artifacts
 .git
+.gitignore
+.vscode
+.idea
+*.swp
+*~
+
+# Operating System Files
+.DS_Store
+Thumbs.db

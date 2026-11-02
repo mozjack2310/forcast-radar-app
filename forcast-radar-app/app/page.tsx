@@ -85,7 +85,34 @@ async function getWeatherData() {
   }
 }
 
+
+async function getSSRTelemetry() {
+  const internalUrls = [
+    process.env.INTERNAL_ALERTS_API_URL,
+    process.env.FASTAPI_INTERNAL_URL,
+    "http://forrad-alerts:8000/api/v1/telemetry/current",
+    "http://forrad_alerts_api:8000/api/v1/telemetry/current",
+    "http://127.0.0.1:8000/api/v1/telemetry/current",
+  ].filter(Boolean) as string[];
+
+  for (const url of internalUrls) {
+    try {
+      const res = await fetch(url, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 export default async function Home() {
+  const initialTelemetry = await getSSRTelemetry();
   // 1. Await the data without destructuring it yet
   const weatherData = await getWeatherData();
 
@@ -119,10 +146,10 @@ export default async function Home() {
         {/* --- 1. Current Conditions Failsafe --- */}
         <div>
           {currentNWS && currentMeteo ? (
-            <CurrentConditionsCard />
+            <CurrentConditionsCard initialData={initialTelemetry} />
           ) : (
             // The Offline UI State
-            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-700 rounded-xl bg-gray-900/50">
+            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-700 rounded-xl bg-slate-100 dark:bg-gray-900/50">
               <span className="text-yellow-500 font-mono text-xl font-bold mb-2">
                 ⚠ SYSTEM AWAITING DATA
               </span>
@@ -148,7 +175,7 @@ export default async function Home() {
           ))
         ) : (
           // The Offline UI State
-          <div className="flex items-center justify-center h-32 border-2 border-dashed border-gray-700 rounded-xl bg-gray-900/50">
+          <div className="flex items-center justify-center h-32 border-2 border-dashed border-gray-700 rounded-xl bg-slate-100 dark:bg-gray-900/50">
             <span className="text-yellow-500 font-mono text-lg font-bold">
               ⚠ FORECAST MODEL OFFLINE
             </span>

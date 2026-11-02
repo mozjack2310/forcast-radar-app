@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       {/* Instead of className={archivo.variable}, 
          we apply the font's actual class name directly to the body 
       */}
@@ -44,7 +44,7 @@ export default function RootLayout({
               {/* 2. The Right-Side App Container (Pushed over to avoid the rail) */}
               <div className="flex-1 flex flex-col ml-0 lg:ml-16 xl:ml-48 transition-all duration-300 min-w-0">
                 <Navbar />
-                <main className="p-8 min-h-screen mx-auto w-full flex-1 bg-slate-950">
+                <main className="p-8 min-h-screen mx-auto w-full flex-1 bg-slate-100 dark:bg-slate-950">
                   {children}
                 </main>
               </div>

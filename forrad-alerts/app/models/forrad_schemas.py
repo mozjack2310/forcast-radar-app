@@ -1,106 +1,135 @@
 import re
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Final, List, Optional
 from pydantic import BaseModel, Field
-from app.models.nws_schemas import NWSAlertFeature
+
+DEFAULT_DESCRIPTION_FALLBACK: Final[str] = "No official description provided by National Weather Service."
+
+__all__ = [
+    "DEFAULT_DESCRIPTION_FALLBACK",
+    "ForRadAlert",
+    "_normalize_nws_text",
+    "_extract_polygon_rings",
+]
 
 
 def _normalize_nws_text(raw_text: Optional[str]) -> Optional[str]:
     """
-    Cleans hard-wrapped 68-char NWS bulletin lines into readable paragraphs
-    while strictly preserving double newlines and Impact-Based Warning (IBW) tags.
+    Normalizes legacy NWS AWIPS 65-character hard-wrapped teletype prose.
+    Preserves double newlines (paragraphs) and Impact-Based Warning (IBW) tags (...TAG...).
     """
     if not raw_text:
         return None
-    cleaned = raw_text.replace("\r\n", "\n").strip()
-    if not cleaned:
-        return None
-    paragraphs = re.split(r"\n\s*\n", cleaned)
-    normalized_paragraphs: List[str] = []
-    for paragraph in paragraphs:
-        lines = [line.strip() for line in paragraph.split("\n") if line.strip()]
-        if not lines:
-            continue
-        # Preserve explicit list items, bullet points, or NWS "...TAG..." lines
-        if any(
-            line.startswith(("*", "-", "•")) or "..." in line
-            for line in lines
-        ):
-            normalized_paragraphs.append("\n".join(lines))
+
+    text = raw_text.replace("\r\n", "\n").strip()
+    paragraphs = re.split(r"\n\s*\n", text)
+    cleaned_paragraphs: List[str] = []
+
+    for para in paragraphs:
+        lines = para.split("\n")
+        if any("..." in line or line.strip().startswith(("*", "-", "•")) for line in lines):
+            cleaned_paragraphs.append("\n".join(line.strip() for line in lines if line.strip()))
         else:
-            normalized_paragraphs.append(" ".join(lines))
-    return "\n\n".join(normalized_paragraphs)
+            joined = " ".join(line.strip() for line in lines if line.strip())
+            if joined:
+                cleaned_paragraphs.append(joined)
+
+    return "\n\n".join(cleaned_paragraphs)
 
 
 def _extract_polygon_rings(geometry: Optional[Dict[str, Any]]) -> Optional[List[Any]]:
     """
-    Extracts coordinate arrays from GeoJSON Polygon or MultiPolygon structures.
+    Extracts GeoJSON coordinate rings from geometry payloads.
+    Returns coordinate list if valid Polygon/MultiPolygon, else None.
     """
     if not geometry or not isinstance(geometry, dict):
         return None
+
+    geom_type = geometry.get("type")
     coords = geometry.get("coordinates")
-    if not coords or not isinstance(coords, list):
-        return None
-    return coords
+
+    if geom_type in ("Polygon", "MultiPolygon") and coords and len(coords) > 0:
+        return coords
+
+    return None
 
 
 class ForRadAlert(BaseModel):
-    """
-    The strictly-typed sanitized alert contract sent to Next.js and MatrixPortal.
-    """
-    alert_id: str = Field(description="Unique NWS alert identifier")
-    event_type: str = Field(description="NWS event name, e.g., Tornado Warning")
-    severity_level: str = Field(description="Extreme, Severe, Moderate, Minor, or Unknown")
-    urgency: str = Field(description="Immediate, Expected, Future, Past, or Unknown")
-    headline: Optional[str] = Field(
-        default=None,
-        max_length=1000,
-        description="Concise summary headline from NWS"
-    )
+    """Sanitized, Imperial-normalized weather hazard model for ForRad."""
+    alert_id: str = Field(..., description="Unique NWS alert identifier")
+    event: str = Field(default="Weather Alert", description="Hazard event designation")
+    severity: str = Field(default="Unknown", description="NWS severity categorization")
+    headline: Optional[str] = Field(default=None, description="Executive alert headline")
     description: str = Field(
-        default="No additional bulletin details provided by the National Weather Service.",
-        max_length=32000,
-        description="Full official NWS bulletin text"
+        default=DEFAULT_DESCRIPTION_FALLBACK,
+        description="Full meteorological alert description or fallback sentinel"
     )
-    instruction: Optional[str] = Field(
-        default=None,
-        max_length=8000,
-        description="Precautionary and preparedness instructions"
-    )
-    active_areas: List[str] = Field(description="List of affected counties or forecast zones")
-    start_time: datetime = Field(description="Effective timestamp of the bulletin")
-    end_time: datetime = Field(description="Expiration timestamp of the bulletin")
-    has_polygon: bool = Field(description="True if a spatial boundary polygon exists")
-    polygon_coordinates: Optional[List[Any]] = Field(
-        default=None,
-        description="GeoJSON coordinate arrays for Leaflet rendering"
-    )
+    instruction: Optional[str] = Field(default=None, description="Actionable safety instructions")
+    active_areas: List[str] = Field(default_factory=list, description="Targeted geographic areas")
+    has_polygon: bool = Field(default=False, description="True if precise vector polygon coordinates exist")
+    polygon_coordinates: Optional[List[Any]] = Field(default=None, description="GeoJSON polygon coordinate array")
+
+    # Backward-compatible property aliases
+    @property
+    def id(self) -> str:
+        return self.alert_id
+
+    @property
+    def event_type(self) -> str:
+        return self.event
+
+    @property
+    def area_desc(self) -> Optional[str]:
+        return "; ".join(self.active_areas) if self.active_areas else None
+
+    @property
+    def coordinates(self) -> Optional[List[Any]]:
+        return self.polygon_coordinates
 
     @classmethod
-    def from_nws_feature(cls, feature: NWSAlertFeature) -> "ForRadAlert":
-        props = feature.properties
-        raw_areas = props.areaDesc.split(";") if props.areaDesc else []
-        cleaned_areas = [area.strip() for area in raw_areas if area.strip()]
-        polygon_coords = _extract_polygon_rings(feature.geometry)
+    def from_nws_feature(cls, feature: Any) -> "ForRadAlert":
+        """Transforms a raw dict or NWSAlertFeature Pydantic model into a ForRadAlert."""
+        if hasattr(feature, "properties"):
+            feat_id = getattr(feature, "id", None)
+            props = getattr(feature, "properties", None)
+            geom = getattr(feature, "geometry", None)
+            props_dict = props.model_dump() if hasattr(props, "model_dump") else (props if isinstance(props, dict) else {})
+            geom_dict = geom.model_dump() if hasattr(geom, "model_dump") else (geom if isinstance(geom, dict) else None)
+        elif isinstance(feature, dict):
+            feat_id = feature.get("id")
+            props_dict = feature.get("properties") or {}
+            geom_dict = feature.get("geometry")
+        else:
+            feat_id = None
+            props_dict = {}
+            geom_dict = None
 
-        normalized_desc = _normalize_nws_text(props.description)
-        if not normalized_desc:
-            normalized_desc = (
-                props.headline
-                or "No additional bulletin details provided by the National Weather Service."
-            )
+        # Clean description with fallback
+        raw_desc = props_dict.get("description")
+        normalized_desc = _normalize_nws_text(raw_desc) if raw_desc and raw_desc.strip() else DEFAULT_DESCRIPTION_FALLBACK
+
+        # Clean instruction
+        raw_inst = props_dict.get("instruction")
+        normalized_inst = _normalize_nws_text(raw_inst) if raw_inst and raw_inst.strip() else None
+
+        # Clean headline (unwrap newlines to single space)
+        raw_headline = props_dict.get("headline")
+        clean_headline = " ".join(raw_headline.split()) if raw_headline and raw_headline.strip() else None
+
+        # Extract active areas from semicolon-delimited areaDesc
+        area_raw = props_dict.get("areaDesc")
+        active_areas = [a.strip() for a in area_raw.split(";") if a.strip()] if area_raw else []
+
+        # Extract geometry coordinates
+        rings = _extract_polygon_rings(geom_dict)
 
         return cls(
-            alert_id=feature.id or props.id,
-            event_type=props.event,
-            severity_level=props.severity,
-            urgency=props.urgency,
-            headline=_normalize_nws_text(props.headline),
-            description=normalized_desc,
-            instruction=_normalize_nws_text(props.instruction),
-            active_areas=cleaned_areas,
-            start_time=props.effective,
-            end_time=props.expires,
-            has_polygon=polygon_coords is not None,
-            polygon_coordinates=polygon_coords,
+            alert_id=str(feat_id or props_dict.get("id", "UNKNOWN_ALERT_ID")),
+            event=props_dict.get("event", "Weather Alert"),
+            severity=props_dict.get("severity", "Unknown"),
+            headline=clean_headline,
+            description=normalized_desc or DEFAULT_DESCRIPTION_FALLBACK,
+            instruction=normalized_inst,
+            active_areas=active_areas,
+            has_polygon=(rings is not None),
+            polygon_coordinates=rings,
         )

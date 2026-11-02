@@ -1,286 +1,213 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-// Adjust this import path if your store is located elsewhere
+import { ForRadTelemetry } from "../../lib/types";
 import { useWeatherStore } from "../../store/useWeatherStore";
+import { formatTelemetryForDisplay } from "../../lib/telemetryMath";
 
-// We update the interface to allow either raw numbers (from a strict FastAPI Pydantic model)
-// OR objects with a 'value' property (from a raw NWS JSON pass-through)
-type MetricValue = number | { value: number | null } | null | undefined;
-
-export interface ForRadTelemetry {
-  timestamp?: string;
-  temperature?: MetricValue;
-  feelsLike?: MetricValue; // Note: NWS usually calls this apparentTemperature
-  humidity?: MetricValue; // NWS uses relativeHumidity
-  pressure?: MetricValue; // NWS uses barometricPressure
-  windSpeed?: MetricValue;
-  windDirection?: MetricValue;
-  windGusts?: MetricValue;
-  visibility?: MetricValue;
-  source?: string;
-  icon?: string; // NWS uses 'icon' for the URL
-  textDescription?: string; // NWS uses 'textDescription'
+interface CurrentConditionsCardProps {
+  initialData?: ForRadTelemetry | Record<string, any> | null;
+  data?: ForRadTelemetry | Record<string, any> | null;
 }
 
-// A robust helper function to extract the number whether it's nested or flat
-const extractValue = (dataPoint: MetricValue): number | null => {
-  if (dataPoint === null || dataPoint === undefined) return null;
-  if (typeof dataPoint === "number") return dataPoint;
-  if (
-    typeof dataPoint === "object" &&
-    dataPoint !== null &&
-    "value" in dataPoint
-  ) {
-    return typeof dataPoint.value === "number" ? dataPoint.value : null;
-  }
-  return null;
+const isValidPayload = (
+  obj: unknown
+): obj is ForRadTelemetry | Record<string, any> => {
+  if (!obj || typeof obj !== "object") return false;
+  const target = "telemetry" in obj ? (obj as Record<string, any>).telemetry : obj;
+  if (!target || typeof target !== "object") return false;
+  return (
+    target.temperature !== undefined ||
+    target.temp !== undefined ||
+    target.wind_speed !== undefined ||
+    target.humidity !== undefined
+  );
 };
 
-export default function CurrentConditionsCard() {
-  const [telemetry, setTelemetry] = useState<ForRadTelemetry | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export default function CurrentConditionsCard({
+  initialData,
+  data,
+}: CurrentConditionsCardProps) {
+  const unit = useWeatherStore((state) => state.unit);
 
-  // Zustand Global Store
-  const unit = useWeatherStore((state: any) => state.unit);
-  const isImp = unit === "imperial";
+  // 1. Stale-While-Revalidate: Seed initial state from SSR props (instant paint)
+  const [telemetry, setTelemetry] = useState<
+    ForRadTelemetry | Record<string, any> | null
+  >(() => {
+    if (isValidPayload(initialData)) return initialData;
+    if (isValidPayload(data)) return data;
+    return null;
+  });
 
+  // Sync if parent SSR props change
   useEffect(() => {
-    const fetchTelemetry = async () => {
+    const candidate = initialData ?? data;
+    if (isValidPayload(candidate)) {
+      setTelemetry(candidate);
+    }
+  }, [initialData, data]);
+
+  // 2. Silent Client Revalidation: Poll same-origin BFF route every 60s
+  useEffect(() => {
+    let isMounted = true;
+
+    const revalidateTelemetry = async () => {
       try {
-        // SECURITY FIX: Call the Next.js Bouncer route (relative path),
-        // NOT the backend hardware directly.
-        // Make sure you have an app/api/telemetry/current/route.ts set up to proxy this!
-        const response = await fetch("/api/telemetry/current");
-        if (!response.ok) throw new Error("Telemetry API unreachable");
+        const res = await fetch("/api/telemetry", {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
 
-        const data = await response.json();
-
-        // Handle deeply nested Redis payloads (e.g., if FastAPI passes the whole cache object)
-        let payload = data;
-        if (data.currentNWS) {
-          payload = data.currentNWS.properties
-            ? data.currentNWS.properties
-            : data.currentNWS;
-        } else if (data.properties) {
-          payload = data.properties;
+        if (res.ok) {
+          const freshJson = await res.json();
+          if (isMounted && isValidPayload(freshJson)) {
+            setTelemetry(freshJson);
+          }
         }
-
-        setTelemetry(payload);
-        setError(null);
-      } catch (err: any) {
-        console.error("Fetch failed:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      } catch {
+        // Stale-While-Revalidate: Silently retain existing state on network hiccup
       }
     };
 
-    fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    // Revalidate after initial mount if seeded data was empty
+    if (!telemetry) {
+      revalidateTelemetry();
+    }
 
-  // --- DYNAMIC MATH CONVERSIONS ---
+    const intervalId = setInterval(revalidateTelemetry, 60000);
 
-  // 0. TEMPERATURE (Raw: Celsius)
-  const rawTemp = extractValue(telemetry?.temperature);
-  const displayTemp =
-    rawTemp !== null
-      ? isImp
-        ? Math.round((rawTemp * 9) / 5 + 32)
-        : Math.round(rawTemp)
-      : "--";
-  const tempLabel = isImp ? "°F" : "°C";
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [telemetry]);
 
-  // 1. FEELS LIKE (Raw: Celsius) - Fallback to normal temp if NWS doesn't provide it
-  const rawFeelsLike = extractValue(telemetry?.feelsLike) ?? rawTemp;
-  const displayFeelsLike =
-    rawFeelsLike !== null
-      ? isImp
-        ? Math.round((rawFeelsLike * 9) / 5 + 32)
-        : Math.round(rawFeelsLike)
-      : "--";
+  // Format through canonical pure math engine
+  const metrics = formatTelemetryForDisplay(telemetry, unit);
 
-  // 2. WIND SPEED (Raw: km/h)
-  const rawWind = extractValue(telemetry?.windSpeed);
-  const displayWind =
-    rawWind !== null
-      ? isImp
-        ? Math.round(rawWind * 0.621371)
-        : Math.round(rawWind)
-      : "--";
-  const windLabel = isImp ? "mph" : "km/h";
-
-  // 3. WIND GUSTS (Raw: km/h)
-  const rawGusts = extractValue(telemetry?.windGusts);
-  const displayWindGusts =
-    rawGusts !== null
-      ? isImp
-        ? Math.round(rawGusts * 0.621371)
-        : Math.round(rawGusts)
-      : "--";
-
-  // 4. VISIBILITY (Raw: Meters)
-  const rawVis = extractValue(telemetry?.visibility);
-  const displayVisibility =
-    rawVis !== null
-      ? isImp
-        ? (rawVis / 1609.34).toFixed(1)
-        : (rawVis / 1000).toFixed(1)
-      : "--";
-  const visLabel = isImp ? "mi" : "km";
-
-  // 5. BAROMETRIC PRESSURE (Raw: Pascals)
-  const rawPressure = extractValue(telemetry?.pressure);
-  const displayPressure =
-    rawPressure !== null
-      ? isImp
-        ? (rawPressure / 3386.39).toFixed(2)
-        : (rawPressure / 100).toFixed(1)
-      : "--";
-  const pressureLabel = isImp ? "inHg" : "hPa";
-
-  // 6. HUMIDITY (Raw: Percent)
-  const rawHumidity = extractValue(telemetry?.humidity);
-  const displayHumidity = rawHumidity !== null ? Math.round(rawHumidity) : "--";
-
-  // 7. DEWPOINT (Approximation if NWS doesn't provide it directly, but NWS usually does)
-  // We'll calculate it safely just in case using simple Magnus formula approximation
-  let displayDewpoint: string | number = "--";
-  if (rawTemp !== null && rawHumidity !== null) {
-    const dewC = rawTemp - (100 - rawHumidity) / 5;
-    displayDewpoint = isImp
-      ? Math.round((dewC * 9) / 5 + 32)
-      : Math.round(dewC);
-  }
-
-  // --- RENDERING ---
-
-  if (loading) {
-    return (
-      <div className="w-full max-w-md h-64 bg-slate-900 rounded-2xl border border-slate-800 flex flex-col items-center justify-center p-6 shadow-xl">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-      </div>
-    );
-  }
+  const rawObj: Record<string, any> =
+    (telemetry && typeof telemetry === "object" && "telemetry" in telemetry
+      ? (telemetry as Record<string, any>).telemetry
+      : telemetry) || {};
+  const iconUrl = rawObj.icon_url ?? rawObj.iconUrl ?? null;
 
   return (
-    <div className="w-full max-w-md bg-slate-900 rounded-2xl border border-slate-800 p-6 shadow-xl text-slate-200">
+    <div className="w-full max-w-md bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl transition-colors duration-200">
       {/* Header */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h2 className="text-lg font-bold">Current Conditions</h2>
-          <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 mt-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            {telemetry?.source || "NWS LIVE"}
+          <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+            Current Conditions
+          </h2>
+          <div className="flex items-center gap-2 mt-1">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                metrics.isFallbackSource
+                  ? "bg-amber-400"
+                  : "bg-emerald-400 animate-pulse"
+              }`}
+            />
+            <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold">
+              {metrics.sourceLabel}
+            </span>
           </div>
         </div>
 
-        {/* NWS Icon & Text Container */}
-        <div className="flex flex-col items-center flex-shrink-0">
-          <div className="w-14 h-14 bg-slate-800/80 rounded-xl border border-slate-700/50 flex items-center justify-center shadow-inner overflow-hidden">
-            {telemetry?.icon ? (
-              <img
-                src={telemetry.icon}
-                alt={telemetry?.textDescription || "Weather Conditions"}
-                title={telemetry?.textDescription || "Weather Conditions"}
-                className="w-full h-full object-contain scale-150 drop-shadow-md cursor-pointer"
-                loading="lazy"
-              />
-            ) : (
-              <span className="text-2xl text-slate-500">☁️</span>
-            )}
-          </div>
-          <span
-            className="text-[10px] font-bold text-slate-400 mt-1.5 uppercase tracking-wider text-center w-16 truncate"
-            title={telemetry?.textDescription}
-          >
-            {telemetry?.textDescription || "--"}
+        {/* Fluid Weather Icon */}
+        <div className="w-12 h-12 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center p-2 shadow-sm">
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt={metrics.conditionText}
+              className="w-full h-auto rounded-lg object-contain"
+            />
+          ) : (
+            <span className="text-xl" role="img" aria-label="Weather condition">
+              ☁️
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Primary Temperature Row */}
+      <div className="my-5 flex items-baseline justify-between flex-wrap gap-2">
+        <div className="flex items-baseline gap-2">
+          <span className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white">
+            {metrics.displayTemp}
+          </span>
+          <span className="text-xl font-bold text-slate-500 dark:text-slate-400">
+            {metrics.tempUnitLabel}
+          </span>
+          <span className="ml-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+            {metrics.feelsLikeType}: {metrics.displayFeelsLike}
           </span>
         </div>
-      </div>
-
-      {/* Temperature */}
-      <div className="flex items-baseline gap-2 mb-8">
-        <span className="text-6xl font-black tracking-tighter">
-          {displayTemp}
-        </span>
-        <span className="text-2xl text-slate-400 font-semibold">
-          {tempLabel}
-        </span>
-        <span className="ml-2 text-sm text-slate-500 font-medium">
-          Feels like {displayFeelsLike}
-          {tempLabel}
+        <span className="text-xs font-mono font-semibold text-cyan-600 dark:text-cyan-400">
+          {metrics.conditionText}
         </span>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* 2x2 Telemetry Sub-Grid */}
+      <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200 dark:border-slate-800/80">
         {/* Wind */}
-        <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-          <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
+        <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/70 rounded-xl p-3.5 transition-colors">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
             Wind
+          </span>
+          <div className="text-base font-bold text-slate-900 dark:text-white font-mono">
+            {metrics.displayWind}
           </div>
-          <div className="text-lg font-bold text-slate-200">
-            {displayWind}{" "}
-            <span className="text-sm text-slate-500 font-normal">
-              {windLabel}
-            </span>
-          </div>
-          <div className="text-xs text-slate-400 mt-1">
-            Gusts to {displayWindGusts} {windLabel}
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            {metrics.displayGusts}
           </div>
         </div>
 
-        {/* Humidity */}
-        <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-          <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
+        {/* Humidity & Dewpoint */}
+        <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/70 rounded-xl p-3.5 transition-colors">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
             Humidity
+          </span>
+          <div className="text-base font-bold text-slate-900 dark:text-white font-mono">
+            {metrics.displayHumidity}
           </div>
-          <div className="text-lg font-bold text-slate-200">
-            {displayHumidity}
-            <span className="text-sm text-slate-500 font-normal">%</span>
-          </div>
-          <div className="text-xs text-slate-400 mt-1">
-            Dewpoint ~ {displayDewpoint}
-            {tempLabel}
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Dewpoint {metrics.displayDewpoint}
           </div>
         </div>
 
-        {/* Pressure */}
-        <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-          <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
+        {/* Barometric Pressure */}
+        <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/70 rounded-xl p-3.5 transition-colors">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
             Pressure
-          </div>
-          <div className="text-lg font-bold text-slate-200">
-            {displayPressure}
-            <span className="text-sm text-slate-500 font-normal ml-1">
-              {pressureLabel}
+          </span>
+          <div className="text-base font-bold text-slate-900 dark:text-white font-mono">
+            {metrics.displayPressure}{" "}
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+              {metrics.pressureUnitLabel}
             </span>
+          </div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Cloud Base {metrics.displayCloudBase}
           </div>
         </div>
 
         {/* Visibility */}
-        <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-          <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
+        <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/70 rounded-xl p-3.5 transition-colors">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
             Visibility
-          </div>
-          <div className="text-lg font-bold text-slate-200">
-            {displayVisibility}
-            <span className="text-sm text-slate-500 font-normal ml-1">
-              {visLabel}
+          </span>
+          <div className="text-base font-bold text-slate-900 dark:text-white font-mono">
+            {metrics.displayVisibility}{" "}
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+              {metrics.visibilityUnitLabel}
             </span>
+          </div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Aviation {metrics.displayWindKnots}
           </div>
         </div>
       </div>
-
-      {error && (
-        <div className="mt-4 text-xs text-red-400 bg-red-900/20 p-2 rounded border border-red-800/50">
-          Error mapping data: {error}
-        </div>
-      )}
     </div>
   );
 }

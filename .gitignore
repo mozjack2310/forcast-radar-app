@@ -10,3 +10,7 @@
 # Secrets & Environment
 **/.env
 **/.env.local
+
+# IDE & Local Workspace Metadata
+.vscode/
+.idea/

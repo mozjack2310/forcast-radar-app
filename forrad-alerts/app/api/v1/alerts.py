@@ -1,132 +1,120 @@
 import asyncio
 import json
 import logging
-from typing import Any, AsyncGenerator, List
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from dataclasses import dataclass
+from typing import Any, AsyncGenerator, Final, Optional
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import StreamingResponse
 
 import app.core.redis as core_redis
-from app.models.forrad_schemas import ForRadAlert
-from app.services.nws_fetcher import (
-    DEFAULT_FETCHER_CONFIG,
-    sync_alerts_to_redis,
-)
 
-logger = logging.getLogger("forrad.alerts_router")
 router = APIRouter()
+logger = logging.getLogger("forrad.alerts")
 
 
-def get_redis_dependency() -> Any:
-    return core_redis.get_redis_client()
-
-
-@router.get("/active", response_model=List[ForRadAlert])
-async def get_active_alerts(
-    redis_client: Any = Depends(get_redis_dependency),
-) -> List[ForRadAlert]:
-    """
-    Plane 1: Synchronous REST Snapshot with Cache-Aside fallback.
-    """
-    if redis_client:
-        try:
-            cached_raw = await redis_client.get(DEFAULT_FETCHER_CONFIG.cache_key)
-            if cached_raw:
-                parsed = json.loads(cached_raw)
-                return [ForRadAlert.model_validate(item) for item in parsed]
-        except Exception as exc:
-            logger.warning(f"Redis cache read failed, falling back to live NWS fetch: {exc}")
-
-    try:
-        return await sync_alerts_to_redis(target_area="AL", redis_client=redis_client)
-    except Exception as exc:
-        logger.error(f"Upstream NWS fetch failed on cache miss: {exc}")
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to retrieve active alerts from cache or upstream NWS provider.",
-        )
+@dataclass
+class SSERouterConfig:
+    """Configuration parameters for Server-Sent Events router delivery."""
+    target_area: str = "AL"
+    cache_key: str = "forrad:alerts:active"
+    pubsub_channel: str = "forrad:alerts:stream"
+    pubsub_poll_timeout_seconds: float = 1.0
+    keepalive_interval_seconds: float = 15.0
+    media_type: str = "text/event-stream"
 
 
 async def alert_event_generator(
     request: Request,
-    redis_client: Any,
+    redis_client: Any = None,
+    sse_config: Optional[SSERouterConfig] = None,
 ) -> AsyncGenerator[str, None]:
     """
-    Plane 2: Asynchronous SSE generator backed by Redis Pub/Sub.
-    Flushes initial cached state immediately upon connection, then yields live updates.
+    Asynchronous event generator yielding SSE frames:
+    1. Immediate 'initial_state' snapshot from Redis cache.
+    2. Streaming 'alert_update' frames on Redis Pub/Sub events.
+    3. Periodic ': keep-alive\\n\\n' comments to prevent proxy timeouts.
     """
-    if not redis_client:
-        yield 'event: error\ndata: {"error": "Redis backplane unavailable"}\n\n'
+    config = sse_config or SSERouterConfig()
+    client = redis_client if redis_client is not None else core_redis.get_redis_client()
+    if not client:
+        logger.error("[SSE Stream] Redis client unavailable.")
+        yield f"event: error\ndata: {json.dumps({'error': 'Redis cache unavailable'})}\n\n"
         return
 
-    pubsub = redis_client.pubsub()
-    await pubsub.subscribe(DEFAULT_FETCHER_CONFIG.pubsub_channel)
-    logger.info("SSE client subscribed to forrad:alerts:stream")
+    # Step 1: Emit immediate initial state snapshot upon connection
+    try:
+        cached = await client.get(config.cache_key)
+        if isinstance(cached, bytes):
+            initial_data = cached.decode("utf-8")
+        else:
+            initial_data = cached if cached else "[]"
+        yield f"event: initial_state\ndata: {initial_data}\n\n"
+    except Exception as exc:
+        logger.error("[SSE Stream] Failed to read initial state: %s", exc)
+        yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+
+    # Step 2: Subscribe to Pub/Sub channel for live delta emissions
+    pubsub = client.pubsub()
+    await pubsub.subscribe(config.pubsub_channel)
+    logger.info("[SSE Stream] Client subscribed to channel %s", config.pubsub_channel)
 
     try:
-        cached_raw = await redis_client.get(DEFAULT_FETCHER_CONFIG.cache_key)
-        if not cached_raw:
-            try:
-                hydrated = await sync_alerts_to_redis(target_area="AL", redis_client=redis_client)
-                cached_str = json.dumps([a.model_dump(mode="json") for a in hydrated])
-            except Exception as exc:
-                logger.warning(f"Initial SSE hydration fetch failed: {exc}")
-                cached_str = "[]"
-        else:
-            cached_str = (
-                cached_raw.decode("utf-8")
-                if isinstance(cached_raw, bytes)
-                else cached_raw
-            )
-
-        yield f"event: initial_state\ndata: {cached_str}\n\n"
-
         while True:
             if await request.is_disconnected():
-                logger.info("SSE client disconnected cleanly.")
+                logger.info("[SSE Stream] Client disconnected.")
                 break
 
-            message = await pubsub.get_message(
-                ignore_subscribe_messages=True,
-                timeout=1.0,
-            )
-            if message and message.get("type") == "message":
-                raw_data = message["data"]
-                payload_str = (
-                    raw_data.decode("utf-8")
-                    if isinstance(raw_data, bytes)
-                    else str(raw_data)
+            try:
+                msg = await pubsub.get_message(
+                    ignore_subscribe_messages=True,
+                    timeout=config.pubsub_poll_timeout_seconds,
                 )
-                yield f"event: alert_update\ndata: {payload_str}\n\n"
-                continue
-
-            yield ": keep-alive\n\n"
-            await asyncio.sleep(15)
-
-    except asyncio.CancelledError:
-        logger.info("SSE generator task cancelled during shutdown/disconnect.")
-    except Exception as exc:
-        logger.error(f"Unexpected exception in SSE stream loop: {exc}")
+                if msg and msg.get("data"):
+                    payload = msg["data"]
+                    data = payload.decode("utf-8") if isinstance(payload, bytes) else str(payload)
+                    yield f"event: alert_update\ndata: {data}\n\n"
+                else:
+                    yield ": keep-alive\n\n"
+            except asyncio.TimeoutError:
+                yield ": keep-alive\n\n"
+            except asyncio.CancelledError:
+                raise
+            except Exception as stream_err:
+                logger.error("[SSE Stream] Pubsub read error: %s", stream_err)
+                await asyncio.sleep(0.1)
     finally:
-        await pubsub.unsubscribe(DEFAULT_FETCHER_CONFIG.pubsub_channel)
-        await pubsub.close()
-        logger.info("Closed Redis Pub/Sub subscription for SSE client.")
+        try:
+            await pubsub.unsubscribe(config.pubsub_channel)
+            await pubsub.close()
+            logger.info("[SSE Stream] Pubsub subscription cleaned up cleanly.")
+        except Exception as cleanup_err:
+            logger.error("[SSE Stream] Pubsub teardown error: %s", cleanup_err)
+
+
+@router.get("/active")
+async def get_active_alerts() -> Response:
+    """REST hydration endpoint returning current active alert snapshot."""
+    client = core_redis.get_redis_client()
+    if not client:
+        return Response(content="[]", media_type="application/json")
+    cached = await client.get("forrad:alerts:active")
+    if isinstance(cached, bytes):
+        content = cached.decode("utf-8")
+    else:
+        content = cached or "[]"
+    return Response(content=content, media_type="application/json")
 
 
 @router.get("/stream")
-async def stream_alerts(
-    request: Request,
-    redis_client: Any = Depends(get_redis_dependency),
-) -> StreamingResponse:
-    """
-    Public Server-Sent Events endpoint for real-time NWS alert streaming.
-    """
+async def stream_active_alerts(request: Request) -> StreamingResponse:
+    """Server-Sent Events endpoint with unbuffered upstream headers."""
+    headers = {
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+    }
     return StreamingResponse(
-        alert_event_generator(request, redis_client),
+        alert_event_generator(request),
+        headers=headers,
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache, no-transform",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-            "Content-Type": "text/event-stream; charset=utf-8",
-        },
     )
